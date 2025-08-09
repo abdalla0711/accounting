@@ -1,7 +1,7 @@
 :root{
     --accent:#0a6efd; --muted:#666; --card:#ffffff; --bg:#f4f6fb; --paper-margin:12mm;
     --danger: #dc3545; --warning: #ffc107; --success: #198754; --secondary: #374151; --info: #0dcaf0;
-    --light-bg: #f0f2f5; /* لون خلفية جديد للتطبيقات */
+    --light-bg: #f0f2f5;
 }
 *{box-sizing:border-box}
 body{font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif; margin:0; background:var(--bg); color:#111;}
@@ -27,6 +27,13 @@ input, select, textarea {width:100%;padding:8px;border:1px solid #d8dbe0;border-
 .customer-col { position: relative; }
 .customer-balance-display { font-size: 12px; font-weight: bold; color: var(--accent); white-space: nowrap; position: absolute; bottom: -18px; left: 0;}
 body[dir="rtl"] .customer-balance-display { left: auto; right: 0;}
+
+/* NEW: General Form Grid for Desktop */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
 
 .preview, .statement-preview {display:none; margin-top:18px;padding:20px;border-radius:8px;background:#fff;border:1px solid #eef2ff}
 .tabs-nav, .sub-tabs-nav { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 16px; flex-wrap: wrap;}
@@ -69,17 +76,9 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
 .statement-client-info {margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 6px;}
 
 
-/*
-███╗   ███╗ ██████╗  ██████╗ ██╗██╗     ██╗
-████╗ ████║██╔═══██╗██╔═══██╗██║██║     ██║
-██╔████╔██║██║   ██║██║   ██║██║██║     ██║
-██║╚██╔╝██║██║   ██║██║   ██║██║██║     ██║
-██║ ╚═╝ ██║╚██████╔╝╚██████╔╝██║███████╗██║
-╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝╚══════╝╚═╝
-*/
-/* === MOBILE-FIRST PROFESSIONAL REDESIGN === */
+/* === MOBILE-FIRST PROFESSIONAL REDESIGN (FINAL ATTEMPT) === */
 @media (max-width: 768px) {
-    body { background-color: var(--card); } /* خلفية بيضاء بالكامل مثل التطبيقات */
+    body { background-color: var(--card); }
     .wrap { padding: 0; margin: 0; }
     .card {
         box-shadow: none;
@@ -87,109 +86,84 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
         border-radius: 0;
     }
 
-    /* --- Header Controls (Welcome, Logout..) --- */
+    /* --- Header Controls --- */
     .header-controls {
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 20px;
+        flex-direction: column; align-items: center; gap: 12px; margin-bottom: 20px;
     }
     .header-controls h1 {
-        order: -1; /* جعل العنوان يظهر في الأعلى */
-        font-size: 18px;
-        color: var(--accent);
+        order: -1; font-size: 18px; color: var(--accent);
     }
-    .welcome-user { display: none; } /* إخفاء رسالة الترحيب لتوفير المساحة */
+    .welcome-user { display: none; }
     .header-buttons {
-        display: flex;
-        flex-direction: row; /* جعل الأزرار بجانب بعضها */
-        justify-content: center;
-        gap: 10px;
-        width: 100%;
+        display: flex; flex-direction: row; justify-content: center; gap: 10px; width: 100%;
     }
     .header-buttons .btn {
-        flex: 1; /* جعل الزرين يأخذان نفس العرض */
-        padding: 10px 5px;
+        flex: 1; padding: 10px 5px;
     }
 
-    /* --- Professional Tabs Redesign --- */
+    /* --- Tabs Redesign --- */
     .tabs-nav, .sub-tabs-nav {
-        display: flex;
-        background-color: var(--light-bg);
-        border-radius: 10px;
-        padding: 4px;
-        border-bottom: none;
-        overflow-x: auto; /* السماح بالتمرير الأفقي إذا لم تتسع التبويبات */
+        display: flex; background-color: var(--light-bg); border-radius: 10px;
+        padding: 4px; border-bottom: none; overflow-x: auto;
     }
     .tab-btn, .sub-tab-btn {
-        flex: 1 0 auto; /* السماح للتبويب بالانكماش والتمدد حسب الحاجة */
-        text-align: center;
-        border-radius: 8px;
-        border-bottom: none;
-        padding: 8px 10px;
-        margin-bottom: 0;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--muted);
-        transition: all 0.25s ease-in-out;
-        white-space: nowrap;
+        flex: 1 0 auto; text-align: center; border-radius: 8px; border-bottom: none;
+        padding: 8px 10px; margin-bottom: 0; font-size: 13px; font-weight: 600;
+        color: var(--muted); transition: all 0.25s ease-in-out; white-space: nowrap;
     }
     .tab-btn.active, .sub-tab-btn.active {
-        background-color: var(--accent);
-        color: #fff;
+        background-color: var(--accent); color: #fff;
         box-shadow: 0 3px 8px rgba(10, 110, 253, 0.3);
         transform: translateY(-1px);
     }
 
-    /* --- Action Buttons (New, Save, Print) --- */
+    /* --- Action Buttons --- */
     .actions {
-        display: grid; /* استخدام الشبكة لتوزيع مثالي */
-        grid-template-columns: repeat(3, 1fr); /* 3 أعمدة متساوية */
-        gap: 8px;
-        margin-top: 15px;
-        margin-bottom: 25px; /* مسافة واضحة قبل بداية النموذج */
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        margin-top: 15px; margin-bottom: 25px;
     }
     .actions .btn {
-        width: 100%;
-        margin: 0;
-        padding: 12px 5px;
-        font-size: 14px;
+        width: 100%; margin: 0; padding: 12px 5px; font-size: 14px;
     }
 
-    /* --- Form Spacing FIX --- */
+    /*
+     *  === THE ULTIMATE FORM SPACING FIX ===
+     *  This logic now targets the containers directly.
+    */
     h2 {
-        text-align: center;
-        font-size: 16px;
-        color: #555;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #f0f0f0;
-        margin-bottom: 20px; /* مسافة تحت العنوان الرئيسي للنموذج */
+        text-align: center; font-size: 16px; color: #555;
+        padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; margin-bottom: 20px;
     }
-    .form-section {
-        border-bottom: none;
-        padding: 0;
-        margin: 0;
-    }
+    .form-section { border-bottom: none; padding: 0; margin: 0; }
+    
+    /* This handles rows with 2 elements on desktop, stacking them on mobile */
     .row {
+        display: flex;
         flex-direction: column;
-        gap: 18px; /* <<< هذا هو المتحكم الوحيد في المسافة بين الحقول >>> */
+        gap: 16px; /* <<< CONTROLLER #1: Space between fields in a pair >>> */
     }
-    .row + .row {
-        margin-top: 18px; /* إضافة نفس المسافة بين مجموعات الحقول */
-    }
-    .col {
-        margin-bottom: 0; /* إلغاء أي هوامش أخرى لضمان التحكم من مكان واحد */
-    }
-    label {
-        margin-bottom: 5px;
-        font-size: 13px;
+
+    /* This handles the new grid layout, also stacking them on mobile */
+    .form-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 16px; /* <<< CONTROLLER #2: Space between fields in a list >>> */
     }
     
-    /* --- Log Tables Styling --- */
+    /* This adds space *between* the different groups of fields */
+    .row + .row,
+    .row + .form-grid,
+    .form-grid + .row {
+        margin-top: 16px;
+    }
+
+    .col { margin-bottom: 0; }
+    label { margin-bottom: 5px; font-size: 13px; }
+    /* === END OF FIX === */
+    
     .log-table .actions { flex-direction: row; gap: 5px; justify-content: center; }
     .log-table .btn.small-action { width: auto; flex: 1; }
 }
-/* === END OF REDESIGN === */
 
 
 /* Print Styles */
