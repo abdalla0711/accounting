@@ -85,7 +85,7 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
 
     /* This adds space between entire rows of inputs */
     .row + .row {
-        margin-top: 12px;
+        margin-top: 4px;
     }
     
     .header-controls h1 { text-align: center; }
