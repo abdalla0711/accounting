@@ -31,7 +31,7 @@ body[dir="rtl"] .customer-balance-display { left: auto; right: 0;}
 /* NEW: General Form Grid for Desktop */
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 12px;
 }
 
