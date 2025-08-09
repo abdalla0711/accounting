@@ -80,7 +80,7 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
     .row {
         flex-direction: column;
         align-items: stretch;
-        gap: 12px; /* Sets space between label/input pairs */
+        gap: 4px; /* Sets space between label/input pairs */
     }
 
     /* This adds space between entire rows of inputs */
