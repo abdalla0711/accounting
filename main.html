@@ -41,13 +41,15 @@
             <button class="btn success" id="generateBtn" data-translate="generateBtn">💾 حفظ</button>
             <button class="btn secondary" id="printInvoiceBtn" data-translate="printBtn">🖨️ طباعة</button>
           </div>
-          <div class="form-section">
+                  <div class="form-section">
             <h2 data-translate="invoiceAndCustomerData">بيانات الفاتورة والعميل</h2>
+            <!-- الصف الأول يبقى كما هو لأنه يحتوي على حقلين -->
             <div class="row">
               <div class="col"><label for="invoiceNumber" data-translate="invoiceNumber">رقم الفاتورة</label><input id="invoiceNumber" type="text"></div>
               <div class="col"><label for="invoiceDate" data-translate="invoiceDate">تاريخ الفاتورة</label><input id="invoiceDate" type="datetime-local"></div>
             </div>
-            <div class="row" style="margin-top:8px">
+            <!-- الصف الثاني يبقى كما هو -->
+            <div class="row">
               <div class="col customer-col">
                 <label for="customerName" data-translate="customerName">اسم العميل</label>
                 <input id="customerName" type="text" list="customersDatalist" data-translate-placeholder="customerNamePlaceholder">
@@ -121,9 +123,15 @@
             <h2 data-translate="addNewCustomer">إضافة/تعديل عميل</h2>
             <div class="row"><div class="col"><label for="custCode" data-translate="customerCode">كود العميل</label><input id="custCode" type="text"></div><div class="col"><label for="custName" data-translate="customerName">اسم العميل</label><input id="custName" type="text"></div><div class="col"><label for="custTaxNumber" data-translate="customerTaxNumber">الرقم الضريبي</label><input id="custTaxNumber" type="text"></div></div>
             <div class="row" style="margin-top:8px"><div class="col"><label for="custCrNumber" data-translate="crNumber">رقم السجل التجاري</label><input id="custCrNumber" type="text"></div><div class="col"><label for="custNationalId" data-translate="nationalId">رقم الهوية</label><input id="custNationalId" type="text"></div><div class="col"><label for="custPhone" data-translate="phone">رقم الهاتف</label><input id="custPhone" type="text"></div></div>
-            <h3 data-translate="nationalAddress">العنوان الوطني</h3>
-            <div class="row"><div class="col"><label for="custCity" data-translate="city">المدينة</label><input id="custCity" type="text"></div><div class="col"><label for="custDistrict" data-translate="district">الحي</label><input id="custDistrict" type="text"></div><div class="col"><label for="custStreet" data-translate="street">الشارع</label><input id="custStreet" type="text"></div></div>
-            <div class="row" style="margin-top:8px"><div class="col"><label for="custPostalCode" data-translate="postalCode">الرمز البريدي</label><input id="custPostalCode" type="text" maxlength="5" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div><div class="col"><label for="custBuildingNumber" data-translate="buildingNumber">رقم المبنى</label><input id="custBuildingNumber" type="text" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div><div class="col"><label for="custAdditionalNumber" data-translate="additionalNumber">الرقم الإضافي</label><input id="custAdditionalNumber" type="text" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div></div>
+                       <h3 data-translate="nationalAddress">العنوان الوطني</h3>
+            <div class="form-grid">
+                <div class="col"><label for="custCity" data-translate="city">المدينة</label><input id="custCity" type="text"></div>
+                <div class="col"><label for="custDistrict" data-translate="district">الحي</label><input id="custDistrict" type="text"></div>
+                <div class="col"><label for="custStreet" data-translate="street">الشارع</label><input id="custStreet" type="text"></div>
+                <div class="col"><label for="custPostalCode" data-translate="postalCode">الرمز البريدي</label><input id="custPostalCode" type="text" maxlength="5" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+                <div class="col"><label for="custBuildingNumber" data-translate="buildingNumber">رقم المبنى</label><input id="custBuildingNumber" type="text" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+                <div class="col"><label for="custAdditionalNumber" data-translate="additionalNumber">الرقم الإضافي</label><input id="custAdditionalNumber" type="text" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+            </div>
             <div class="actions" style="margin-top: 16px;"><button class="btn success" id="saveCustomerBtn" data-translate="saveCustomerBtn">💾 حفظ العميل</button><button class="btn secondary" id="clearCustomerFormBtn" data-translate="clearFormBtn">➕ جديد</button></div>
         </div>
         <div id="customerLog" class="sub-tab-content"><h2 data-translate="savedCustomers">العملاء المحفوظون</h2><table class="log-table" id="customersLogTable"><thead><tr><th data-translate="customerCode">الكود</th><th data-translate="customerName">اسم العميل</th><th data-translate="phone">الهاتف</th><th data-translate="balance">الرصيد</th><th data-translate="logActions">إجراءات</th></tr></thead><tbody id="customersLogBody"></tbody></table></div>
