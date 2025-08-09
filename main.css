@@ -1,6 +1,7 @@
 :root{
     --accent:#0a6efd; --muted:#666; --card:#ffffff; --bg:#f4f6fb; --paper-margin:12mm;
     --danger: #dc3545; --warning: #ffc107; --success: #198754; --secondary: #374151; --info: #0dcaf0;
+    --light-bg: #f0f2f5; /* لون خلفية جديد للتطبيقات */
 }
 *{box-sizing:border-box}
 body{font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif; margin:0; background:var(--bg); color:#111;}
@@ -17,7 +18,8 @@ input, select, textarea {width:100%;padding:8px;border:1px solid #d8dbe0;border-
 .items-table, .log-table {width:100%;border-collapse:collapse;margin-top:12px; font-size: 14px; display: block; overflow-x: auto; white-space: nowrap;}
 .items-table th,.items-table td, .log-table th, .log-table td {border:1px solid #e5e7eb;padding:8px;text-align:center; vertical-align: middle;}
 .items-table th, .log-table th {background:#fbfdff;font-weight:700}
-.btn{display:inline-block;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff;font-weight:700; font-size: 14px; margin: 2px;}
+.btn{display:inline-block;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff;font-weight:700; font-size: 14px; margin: 2px; transition: all 0.2s ease;}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 .btn.info{background: var(--info); color: #000;} .btn.secondary{background:var(--secondary)} .btn.success{background:var(--success)}
 .btn.danger{background:var(--danger)} .btn.warning{background:var(--warning); color: #111;}
 .btn.small-action{padding: 4px 8px; font-size: 12px;}
@@ -66,171 +68,129 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
 .receipt-signatures, .statement-summary {margin-top: 40px; display: flex; justify-content: space-between; font-size: 0.9em;}
 .statement-client-info {margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 6px;}
 
-/* === START: AGGRESSIVE MOBILE FIX === */
+
+/*
+███╗   ███╗ ██████╗  ██████╗ ██╗██╗     ██╗
+████╗ ████║██╔═══██╗██╔═══██╗██║██║     ██║
+██╔████╔██║██║   ██║██║   ██║██║██║     ██║
+██║╚██╔╝██║██║   ██║██║   ██║██║██║     ██║
+██║ ╚═╝ ██║╚██████╔╝╚██████╔╝██║███████╗██║
+╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝╚══════╝╚═╝
+*/
+/* === MOBILE-FIRST PROFESSIONAL REDESIGN === */
 @media (max-width: 768px) {
-    /* --- إعادة تعيين تخطيط الصفحة والبطاقة --- */
-    .wrap {
-        padding: 8px;
-        margin: 0;
-    }
+    body { background-color: var(--card); } /* خلفية بيضاء بالكامل مثل التطبيقات */
+    .wrap { padding: 0; margin: 0; }
     .card {
+        box-shadow: none;
         padding: 12px;
+        border-radius: 0;
     }
+
+    /* --- Header Controls (Welcome, Logout..) --- */
     .header-controls {
         flex-direction: column;
-        align-items: stretch;
-        gap: 15px;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
     }
     .header-controls h1 {
-        text-align: center;
+        order: -1; /* جعل العنوان يظهر في الأعلى */
         font-size: 18px;
+        color: var(--accent);
     }
+    .welcome-user { display: none; } /* إخفاء رسالة الترحيب لتوفير المساحة */
     .header-buttons {
-        flex-direction: column;
-        gap: 8px;
+        display: flex;
+        flex-direction: row; /* جعل الأزرار بجانب بعضها */
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+    }
+    .header-buttons .btn {
+        flex: 1; /* جعل الزرين يأخذان نفس العرض */
+        padding: 10px 5px;
     }
 
-    /* 
-     *  === إعادة تعيين قوية لمسافات النموذج ===
-     *  هذا هو الجزء الأهم. نحن نفرض إعادة تعيين كاملة للتخطيط.
-    */
-
-    /* الخطوة 1: إعادة تعيين الحاوية الرئيسية للحقول */
-    .form-section {
-        padding: 10px 0 !important; /* فرض الحشوة لتكون عمودية فقط */
-        margin: 0 !important;      /* إزالة كل الهوامش الخارجية */
-        border-bottom: 1px solid #e5e7eb;
-    }
-    .form-section + .form-section {
-        margin-top: 15px !important; /* إضافة مسافة متحكم بها بين الأقسام */
-    }
-
-    /* الخطوة 2: إعادة تعيين حاوية الصفوف */
-    .row {
-        display: block !important; /* إلغاء تخطيط Flexbox تمامًا والتعامل معها ككتل بسيطة */
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* الخطوة 3: التحكم المباشر في حاويات حقول الإدخال */
-    .col {
-        display: block !important; /* التأكد من أنها تتصرف ككتلة بسيطة */
-        padding: 0 !important;     /* إزالة أي حشوة داخلية */
-        margin: 0 !important;      /* إزالة كل الهوامش الخارجية */
-        width: 100% !important;    /* فرض عرض كامل */
-    }
-    
-    /* 
-     * الخطوة 4 (المتحكم الوحيد): إضافة هامش متحكم به *فقط* بين حقول الإدخال.
-     * هذا هو المكان الوحيد الآن الذي يتحكم في المسافة.
-    */
-    .col + .col {
-        margin-top: 18px !important; /* <<< قم بتعديل هذه القيمة (18px) حسب رغبتك لتكبير أو تصغير المسافة */
-    }
-    
-    /* الخطوة 5: تعديل مسافة العناوين فوق الحقول */
-    label {
-        margin-bottom: 4px; /* تقليل المسافة بين العنوان ومربع الإدخال */
-    }
-    
-    h2 {
-        font-size: 16px;
-        margin-bottom: 15px; /* مسافة تحت العناوين مثل "بيانات الفاتورة والعميل" */
-    }
-    /* === نهاية إعادة التعيين القوية === */
-
-
-    /* --- بقية الأنماط للجوال --- */
+    /* --- Professional Tabs Redesign --- */
     .tabs-nav, .sub-tabs-nav {
-        justify-content: flex-start;
-        overflow-x: auto;
+        display: flex;
+        background-color: var(--light-bg);
+        border-radius: 10px;
+        padding: 4px;
+        border-bottom: none;
+        overflow-x: auto; /* السماح بالتمرير الأفقي إذا لم تتسع التبويبات */
     }
     .tab-btn, .sub-tab-btn {
-        white-space: nowrap;
-        font-size: 14px;
+        flex: 1 0 auto; /* السماح للتبويب بالانكماش والتمدد حسب الحاجة */
+        text-align: center;
+        border-radius: 8px;
+        border-bottom: none;
         padding: 8px 10px;
+        margin-bottom: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        transition: all 0.25s ease-in-out;
+        white-space: nowrap;
     }
+    .tab-btn.active, .sub-tab-btn.active {
+        background-color: var(--accent);
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(10, 110, 253, 0.3);
+        transform: translateY(-1px);
+    }
+
+    /* --- Action Buttons (New, Save, Print) --- */
     .actions {
-        flex-direction: column;
-        align-items: stretch;
+        display: grid; /* استخدام الشبكة لتوزيع مثالي */
+        grid-template-columns: repeat(3, 1fr); /* 3 أعمدة متساوية */
         gap: 8px;
-        margin-top: 20px;
+        margin-top: 15px;
+        margin-bottom: 25px; /* مسافة واضحة قبل بداية النموذج */
     }
     .actions .btn {
         width: 100%;
         margin: 0;
+        padding: 12px 5px;
+        font-size: 14px;
     }
-    .log-table .actions {
-        flex-direction: column;
-        gap: 5px;
-    }
-    .log-table .btn.small-action {
-        width: 90%;
-        margin: 2px auto;
-    }
-    .invoice-preview .inv-header {
-        flex-direction: column;
-        align-items: center;
-    }
-}
-/* === END OF MOBILE FIX === */
 
-
-/* Print Styles */
-@media print {
-    body {
-        background: white;
-        color: black;
+    /* --- Form Spacing FIX --- */
+    h2 {
+        text-align: center;
+        font-size: 16px;
+        color: #555;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 20px; /* مسافة تحت العنوان الرئيسي للنموذج */
     }
-    .wrap, .card {
-        box-shadow: none;
-        max-width: 100%;
-        margin: 0;
+    .form-section {
+        border-bottom: none;
         padding: 0;
-        border-radius: 0;
-    }
-    .no-print {
-        display: none !important;
-    }
-    .preview, .statement-preview {
-        display: none !important;
-        border: none;
         margin: 0;
-        padding: 0;
-        border-radius: 0;
     }
-    body.printing-invoice .invoice-preview {
-        display: block !important;
+    .row {
+        flex-direction: column;
+        gap: 18px; /* <<< هذا هو المتحكم الوحيد في المسافة بين الحقول >>> */
     }
-    body.printing-receipt .receipt-preview {
-        display: block !important;
+    .row + .row {
+        margin-top: 18px; /* إضافة نفس المسافة بين مجموعات الحقول */
     }
-    body.printing-statement .statement-preview {
-        display: block !important;
+    .col {
+        margin-bottom: 0; /* إلغاء أي هوامش أخرى لضمان التحكم من مكان واحد */
     }
-    .items-table {
-        display: table;
-        overflow-x: hidden;
-        white-space: normal;
+    label {
+        margin-bottom: 5px;
+        font-size: 13px;
     }
-    @page {
-        size: A4;
-        margin: var(--paper-margin);
-    }
+    
+    /* --- Log Tables Styling --- */
+    .log-table .actions { flex-direction: row; gap: 5px; justify-content: center; }
+    .log-table .btn.small-action { width: auto; flex: 1; }
 }
+/* === END OF REDESIGN === */
 
-/* Print Styles */
-@media print{
-    body{background:white; color:black;}
-    .wrap, .card {box-shadow:none;max-width:100%;margin:0;padding:0;border-radius:0;}
-    .no-print {display:none !important}
-    .preview, .statement-preview { display: none !important; border:none;margin:0;padding:0;border-radius:0;}
-    body.printing-invoice .invoice-preview { display: block !important; }
-    body.printing-receipt .receipt-preview { display: block !important; }
-    body.printing-statement .statement-preview { display: block !important; }
-    .items-table { display: table; overflow-x: hidden; white-space: normal; }
-    @page { size: A4; margin: var(--paper-margin); }
-}
 
 /* Print Styles */
 @media print{
