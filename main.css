@@ -1,7 +1,7 @@
 :root{
     --accent:#0a6efd; --muted:#666; --card:#ffffff; --bg:#f4f6fb; --paper-margin:12mm;
     --danger: #dc3545; --warning: #ffc107; --success: #198754; --secondary: #374151; --info: #0dcaf0;
-    --light-bg: #f0f2f5;
+    --light-bg: #f0f2f5; /* لون خلفية جديد للتطبيقات */
 }
 *{box-sizing:border-box}
 body{font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif; margin:0; background:var(--bg); color:#111;}
@@ -11,7 +11,7 @@ body{font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif; margin:0; ba
 h1,h2,h3{margin:0 0 10px;color:var(--accent)}
 h1{font-size:20px;text-align:center;} h2{font-size:16px;color:#333} h3{font-size:15px;color:var(--muted); margin-top:16px;}
 .row{display:flex;gap:12px;flex-wrap:wrap}
-.col{flex:0.5 1 100px;min-width:180px}
+.col{flex:1 1 220px;min-width:180px} /* السطر المسبب للمشكلة على الحاسوب */
 label{display:block;font-weight:600;margin-bottom:6px;font-size:14px;}
 input, select, textarea {width:100%;padding:8px;border:1px solid #d8dbe0;border-radius:6px;font-size:14px; background: #fff;}
 .small{font-size:13px;color:var(--muted)}
@@ -20,20 +20,12 @@ input, select, textarea {width:100%;padding:8px;border:1px solid #d8dbe0;border-
 .items-table th, .log-table th {background:#fbfdff;font-weight:700}
 .btn{display:inline-block;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff;font-weight:700; font-size: 14px; margin: 2px; transition: all 0.2s ease;}
 .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-.btn.info{background: var(--info); color: #000;} .btn.secondary{background:var(--secondary)} .btn.success{background:var(--success)}
-.btn.danger{background:var(--danger)} .btn.warning{background:var(--warning); color: #111;}
+.btn.info{background: var(--info); color: #000;} .btn.secondary{background:var(--secondary)} .btn.success{background:var(--success)} .btn.danger{background:var(--danger)} .btn.warning{background:var(--warning); color: #111;}
 .btn.small-action{padding: 4px 8px; font-size: 12px;}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom: 12px; justify-content: center; align-items: center;}
 .customer-col { position: relative; }
 .customer-balance-display { font-size: 12px; font-weight: bold; color: var(--accent); white-space: nowrap; position: absolute; bottom: -18px; left: 0;}
 body[dir="rtl"] .customer-balance-display { left: auto; right: 0;}
-
-/* NEW: General Form Grid for Desktop */
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 12px;
-}
 
 .preview, .statement-preview {display:none; margin-top:18px;padding:20px;border-radius:8px;background:#fff;border:1px solid #eef2ff}
 .tabs-nav, .sub-tabs-nav { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 16px; flex-wrap: wrap;}
@@ -50,6 +42,7 @@ body[dir="rtl"] .summary { text-align: right; }
 .summary p { margin: 5px 0; font-size: 15px;}
 
 /* Preview Styles */
+/* ... (Preview styles remain the same, they are correct) ... */
 .preview-client-details {margin-top:20px; background: #f9f9f9; padding: 12px; border-radius: 6px;}
 .preview-client-details .detail-row { display: flex; margin-bottom: 4px; font-size: 14px;}
 .preview-client-details .detail-label { font-weight: bold; min-width: 120px; }
@@ -76,14 +69,12 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
 .statement-client-info {margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 6px;}
 
 
-/* === MOBILE-FIRST PROFESSIONAL REDESIGN (FINAL ATTEMPT) === */
+/* === MOBILE-FIRST PROFESSIONAL REDESIGN (WITH THE CORRECT FIX) === */
 @media (max-width: 768px) {
     body { background-color: var(--card); }
     .wrap { padding: 0; margin: 0; }
     .card {
-        box-shadow: none;
-        padding: 12px;
-        border-radius: 0;
+        box-shadow: none; padding: 12px; border-radius: 0;
     }
 
     /* --- Header Controls --- */
@@ -125,45 +116,38 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
     .actions .btn {
         width: 100%; margin: 0; padding: 12px 5px; font-size: 14px;
     }
-
-    /*
-     *  === THE ULTIMATE FORM SPACING FIX ===
-     *  This logic now targets the containers directly.
-    */
+    
+    /* --- Form Spacing FIX --- */
     h2 {
         text-align: center; font-size: 16px; color: #555;
         padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; margin-bottom: 20px;
     }
     .form-section { border-bottom: none; padding: 0; margin: 0; }
     
-    /* This handles rows with 2 elements on desktop, stacking them on mobile */
     .row {
-        display: flex;
         flex-direction: column;
-        gap: 16px; /* <<< CONTROLLER #1: Space between fields in a pair >>> */
+        gap: 16px; /* <<< هذا هو المتحكم الوحيد الآن في المسافة >>> */
+    }
+    .row + .row {
+        margin-top: 16px; /* مسافة بين مجموعات الحقول */
     }
 
-    /* This handles the new grid layout, also stacking them on mobile */
-    .form-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 16px; /* <<< CONTROLLER #2: Space between fields in a list >>> */
+    /*
+     *  ============= THE REAL, FINAL FIX IS HERE =============
+     *  This one line overrides the 220px height from the desktop style.
+     *  It tells the element to be only as tall as its content.
+    */
+    .col {
+        flex-basis: auto !important; /* <<< هذا هو السطر الذي يحل كل شيء >>> */
     }
-    
-    /* This adds space *between* the different groups of fields */
-    .row + .row,
-    .row + .form-grid,
-    .form-grid + .row {
-        margin-top: 16px;
-    }
+    /*  ====================================================== */
 
-    .col { margin-bottom: 0; }
     label { margin-bottom: 5px; font-size: 13px; }
-    /* === END OF FIX === */
     
     .log-table .actions { flex-direction: row; gap: 5px; justify-content: center; }
     .log-table .btn.small-action { width: auto; flex: 1; }
 }
+/* === END OF REDESIGN === */
 
 
 /* Print Styles */
