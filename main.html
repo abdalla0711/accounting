@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title data-translate="pageTitle">نظام الفواتير وسندات التحصيل</title>
+<link rel="stylesheet" href="main.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="no-print">
+      <div class="header-controls">
+        <h1 data-translate="pageTitle" style="text-align: initial;">نظام الفواتير والسندات</h1>
+        <div class="header-buttons">
+          <span id="welcomeUser" class="welcome-user"></span>
+          <button class="btn secondary" id="langToggleBtn">English</button>
+          <button class="btn danger" id="logoutBtn" data-translate="logoutBtn">تسجيل الخروج</button>
+        </div>
+      </div>
+
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="invoiceTab" data-translate="invoiceTab">فاتورة ضريبية</button>
+        <button class="tab-btn" data-tab="receiptTab" data-translate="receiptTab">سند تحصيل</button>
+        <button class="tab-btn" data-tab="itemsTab" data-translate="itemsTab">الأصناف</button>
+        <button class="tab-btn" data-tab="customersTab" data-translate="customersTab">العملاء</button>
+        <button class="tab-btn" data-tab="settingsTab" data-translate="settingsTab">الإعدادات والبيانات</button>
+      </div>
+
+      <!-- Main Invoice Tab -->
+      <div id="invoiceTab" class="tab-content active">
+        <div class="sub-tabs-nav">
+          <button class="sub-tab-btn active" data-tab="createInvoice" data-parent="invoiceTab" data-translate="createInvoiceSubTab">إنشاء فاتورة</button>
+          <button class="sub-tab-btn" data-tab="invoiceLog" data-parent="invoiceTab" data-translate="invoiceLogSubTab">سجل الفواتير</button>
+        </div>
+        <div id="createInvoice" class="sub-tab-content active">
+          <div class="actions">
+            <button class="btn" id="newInvoiceBtn" data-translate="newInvoiceBtn">➕ جديد</button>
+            <button class="btn success" id="generateBtn" data-translate="generateBtn">💾 حفظ</button>
+            <button class="btn secondary" id="printInvoiceBtn" data-translate="printBtn">🖨️ طباعة</button>
+          </div>
+          <div class="form-section">
+            <h2 data-translate="invoiceAndCustomerData">بيانات الفاتورة والعميل</h2>
+            <div class="row">
+              <div class="col"><label for="invoiceNumber" data-translate="invoiceNumber">رقم الفاتورة</label><input id="invoiceNumber" type="text"></div>
+              <div class="col"><label for="invoiceDate" data-translate="invoiceDate">تاريخ الفاتورة</label><input id="invoiceDate" type="datetime-local"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="col customer-col">
+                <label for="customerName" data-translate="customerName">اسم العميل</label>
+                <input id="customerName" type="text" list="customersDatalist" data-translate-placeholder="customerNamePlaceholder">
+                <span id="customerBalanceDisplay" class="customer-balance-display"></span>
+              </div>
+              <div class="col"><label for="customerTaxNumber" data-translate="customerTaxNumber">الرقم الضريبي للعميل</label><input id="customerTaxNumber" type="text" readonly></div>
+            </div>
+          </div>
+          <div class="form-section">
+            <h2 style="margin-bottom:0" data-translate="items">الأصناف</h2>
+            <table class="items-table" id="itemsTable">
+                <thead><tr><th style="width:40%" data-translate="itemDescription">الوصف</th><th data-translate="itemQty">الكمية</th><th data-translate="itemUnitPrice">سعر الوحدة</th><th data-translate="itemTotal">الإجمالي</th><th style="width:70px" data-translate="itemAction">إجراء</th></tr></thead>
+                <tbody id="itemsBody"></tbody>
+            </table>
+            <div style="margin-top:8px" class="controls"><button class="btn" id="addItemBtn" data-translate="addItemBtn">➕ إضافة صنف</button></div>
+            <div class="summary">
+              <p><span data-translate="subTotalLabel">الإجمالي قبل الضريبة:</span> <strong id="subTotal">0.00</strong> SAR</p>
+              <p><span data-translate="vatTotalLabel">قيمة الضريبة (15%):</span> <strong id="vatTotal">0.00</strong> SAR</p>
+              <p><span data-translate="grandTotalLabel">الإجمالي الكلي:</span> <strong id="grandTotal">0.00</strong> SAR</p>
+            </div>
+          </div>
+        </div>
+        <div id="invoiceLog" class="sub-tab-content"><h2 data-translate="invoiceLogTitle">سجل الفواتير</h2><table class="log-table" id="invoiceLogTable"><thead><tr><th data-translate="logInvoiceNumber">رقم الفاتورة</th><th data-translate="logDate">التاريخ</th><th data-translate="logCustomer">العميل</th><th data-translate="logTotal">الإجمالي</th><th data-translate="logActions">إجراءات</th></tr></thead><tbody id="invoiceLogBody"></tbody></table></div>
+      </div>
+
+      <!-- Main Receipt Tab -->
+      <div id="receiptTab" class="tab-content">
+        <div class="sub-tabs-nav">
+          <button class="sub-tab-btn active" data-tab="createReceipt" data-parent="receiptTab" data-translate="createReceiptSubTab">إنشاء سند</button>
+          <button class="sub-tab-btn" data-tab="receiptLog" data-parent="receiptTab" data-translate="receiptLogSubTab">سجل السندات</button>
+        </div>
+        <div id="createReceipt" class="sub-tab-content active">
+          <h1 data-translate="salesReceiptVoucher">سند تحصيل مبيعات</h1>
+           <div class="actions">
+            <button class="btn" id="newReceiptBtn" data-translate="newReceiptBtn">➕ جديد</button>
+            <button class="btn success" id="saveReceiptBtn" data-translate="saveReceiptBtn">💾 حفظ السند</button>
+            <button class="btn secondary" id="printReceiptBtn" data-translate="printReceiptBtn">🖨️ طباعة السند</button>
+          </div>
+          <div class="form-section">
+            <h2 data-translate="voucherData">بيانات السند</h2>
+            <div class="row"><div class="col"><label for="receiptNumber" data-translate="receiptNumber">رقم السند</label><input id="receiptNumber" type="text"></div><div class="col"><label for="receiptDate" data-translate="receiptDate">تاريخ السند</label><input id="receiptDate" type="datetime-local"></div></div>
+          </div>
+          <div class="form-section">
+            <h2 data-translate="customerAndCollectionData">بيانات العميل والتحصيل</h2>
+             <div class="row">
+                <div class="col customer-col">
+                  <label for="receiptCustomerName" data-translate="receiptCustomerName">اسم العميل</label>
+                  <input id="receiptCustomerName" type="text" list="customersDatalist" data-translate-placeholder="receiptCustomerNamePlaceholder">
+                  <span id="receiptCustomerBalanceDisplay" class="customer-balance-display"></span>
+                </div>
+                <div class="col"><label for="amountReceived" data-translate="amountReceived">المبلغ المستلم</label><input id="amountReceived" type="number" min="0" step="any" placeholder="0.00"></div>
+             </div>
+             <div class="row" style="margin-top:8px"><div class="col"><label for="paymentMethod" data-translate="paymentMethod">طريقة الدفع</label><select id="paymentMethod"><option value="Cash" data-translate="paymentCash">نقدي</option><option value="Bank Transfer" data-translate="paymentBank">تحويل بنكي</option><option value="Credit Card" data-translate="paymentCard">بطاقة ائتمان</option></select></div></div>
+          </div>
+          <div class="form-section"><h2 data-translate="description">الوصف</h2><div class="row"><div class="col"><label for="receiptDescription" data-translate="receiptDescriptionLabel">وصف عملية التحصيل</label><textarea id="receiptDescription" data-translate-placeholder="receiptDescriptionPlaceholder"></textarea></div></div></div>
+        </div>
+        <div id="receiptLog" class="sub-tab-content"><h2 data-translate="receiptLogTitle">سجل سندات التحصيل</h2><table class="log-table" id="receiptLogTable"><thead><tr><th data-translate="logReceiptNumber">رقم السند</th><th data-translate="logDate">التاريخ</th><th data-translate="logCustomer">العميل</th><th data-translate="logAmount">المبلغ</th><th data-translate="logActions">إجراءات</th></tr></thead><tbody id="receiptLogBody"></tbody></table></div>
+      </div>
+
+      <!-- Items Management Tab -->
+      <div id="itemsTab" class="tab-content">
+        <div class="sub-tabs-nav"><button class="sub-tab-btn active" data-tab="createItem" data-parent="itemsTab" data-translate="createItemSubTab">إنشاء صنف</button><button class="sub-tab-btn" data-tab="itemLog" data-parent="itemsTab" data-translate="itemLogSubTab">سجل الأصناف</button></div>
+        <div id="createItem" class="sub-tab-content active"><h2 data-translate="addNewItem">إضافة/تعديل صنف</h2><div class="row"><div class="col"><label for="itemName" data-translate="itemName">اسم/وصف الصنف</label><input id="itemName" type="text"></div><div class="col"><label for="itemPrice" data-translate="itemPrice">سعر الوحدة</label><input id="itemPrice" type="number" min="0" step="any"></div></div><div class="actions" style="margin-top: 16px;"><button class="btn success" id="saveItemBtn" data-translate="saveItemBtn">💾 حفظ الصنف</button><button class="btn secondary" id="clearItemFormBtn" data-translate="clearFormBtn">➕ جديد</button></div></div>
+        <div id="itemLog" class="sub-tab-content"><h2 data-translate="savedItems">الأصناف المحفوظة</h2><table class="log-table" id="itemsLogTable"><thead><tr><th data-translate="itemName">اسم الصنف</th><th data-translate="itemPrice">السعر</th><th data-translate="qtySold">الكمية المباعة</th><th data-translate="logActions">إجراءات</th></tr></thead><tbody id="itemsLogBody"></tbody></table></div>
+      </div>
+      
+      <!-- Customers Management Tab -->
+      <div id="customersTab" class="tab-content">
+        <div class="sub-tabs-nav"><button class="sub-tab-btn active" data-tab="createCustomer" data-parent="customersTab" data-translate="createCustomerSubTab">إنشاء عميل</button><button class="sub-tab-btn" data-tab="customerLog" data-parent="customersTab" data-translate="customerLogSubTab">سجل العملاء</button></div>
+        <div id="createCustomer" class="sub-tab-content active">
+            <h2 data-translate="addNewCustomer">إضافة/تعديل عميل</h2>
+            <div class="row"><div class="col"><label for="custCode" data-translate="customerCode">كود العميل</label><input id="custCode" type="text"></div><div class="col"><label for="custName" data-translate="customerName">اسم العميل</label><input id="custName" type="text"></div><div class="col"><label for="custTaxNumber" data-translate="customerTaxNumber">الرقم الضريبي</label><input id="custTaxNumber" type="text"></div></div>
+            <div class="row" style="margin-top:8px"><div class="col"><label for="custCrNumber" data-translate="crNumber">رقم السجل التجاري</label><input id="custCrNumber" type="text"></div><div class="col"><label for="custNationalId" data-translate="nationalId">رقم الهوية</label><input id="custNationalId" type="text"></div><div class="col"><label for="custPhone" data-translate="phone">رقم الهاتف</label><input id="custPhone" type="text"></div></div>
+            <h3 data-translate="nationalAddress">العنوان الوطني</h3>
+            <div class="row"><div class="col"><label for="custCity" data-translate="city">المدينة</label><input id="custCity" type="text"></div><div class="col"><label for="custDistrict" data-translate="district">الحي</label><input id="custDistrict" type="text"></div><div class="col"><label for="custStreet" data-translate="street">الشارع</label><input id="custStreet" type="text"></div></div>
+            <div class="row" style="margin-top:8px"><div class="col"><label for="custPostalCode" data-translate="postalCode">الرمز البريدي</label><input id="custPostalCode" type="text" maxlength="5" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div><div class="col"><label for="custBuildingNumber" data-translate="buildingNumber">رقم المبنى</label><input id="custBuildingNumber" type="text" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div><div class="col"><label for="custAdditionalNumber" data-translate="additionalNumber">الرقم الإضافي</label><input id="custAdditionalNumber" type="text" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div></div>
+            <div class="actions" style="margin-top: 16px;"><button class="btn success" id="saveCustomerBtn" data-translate="saveCustomerBtn">💾 حفظ العميل</button><button class="btn secondary" id="clearCustomerFormBtn" data-translate="clearFormBtn">➕ جديد</button></div>
+        </div>
+        <div id="customerLog" class="sub-tab-content"><h2 data-translate="savedCustomers">العملاء المحفوظون</h2><table class="log-table" id="customersLogTable"><thead><tr><th data-translate="customerCode">الكود</th><th data-translate="customerName">اسم العميل</th><th data-translate="phone">الهاتف</th><th data-translate="balance">الرصيد</th><th data-translate="logActions">إجراءات</th></tr></thead><tbody id="customersLogBody"></tbody></table></div>
+      </div>
+      
+      <!-- Settings Tab -->
+      <div id="settingsTab" class="tab-content">
+        <h1 data-translate="settingsTab">الإعدادات والبيانات</h1>
+        <div class="form-section"><h2 data-translate="companySection">بيانات الشركة</h2><p class="small" data-translate="companySectionHint">هذه البيانات ستظهر في أعلى الفواتير والسندات المطبوعة.</p><div class="row"><div class="col"><label for="settingSellerName" data-translate="sellerName">اسم الشركة</label><input id="settingSellerName" type="text"></div><div class="col"><label for="settingSellerTaxNum" data-translate="sellerTaxNumber">الرقم الضريبي</label><input id="settingSellerTaxNum" type="text"></div></div><div class="row" style="margin-top:8px"><div class="col"><label for="settingSellerPhone" data-translate="phone">الهاتف</label><input id="settingSellerPhone" type="text"></div><div class="col"><label for="settingSellerAddress" data-translate="sellerAddress">العنوان</label><input id="settingSellerAddress" type="text"></div></div><div class="actions" style="margin-top: 16px;"><button class="btn success" id="saveSettingsBtn" data-translate="saveSettingsBtn">💾 حفظ الإعدادات</button></div></div>
+        <div class="form-section"><h2 data-translate="databaseManagement">إدارة قاعدة البيانات</h2><p class="small" data-translate="databaseManagementHint">يمكنك أخذ نسخة احتياطية من كل بياناتك في ملف، أو استعادة البيانات من نسخة سابقة. البيانات تحفظ تلقائياً في المتصفح.</p><div class="actions"><button class="btn" id="exportAllBtn" data-translate="exportAllBtn">💾 تصدير نسخة احتياطية</button><div><label for="importAllFile" class="btn secondary" data-translate="importAllBtn">📂 استعادة من ملف</label><input type="file" id="importAllFile" accept=".xlsx, .xls" style="display:none;"></div><button class="btn danger" id="clearAllDataBtn" data-translate="clearAllDataBtn">🗑️ مسح كل البيانات (خطر)</button></div></div>
+      </div>
+      
+      <datalist id="customersDatalist"></datalist>
+      <datalist id="itemsDatalist"></datalist>
+    </div>
+
+    <!-- Preview Areas -->
+    <div class="preview invoice-preview" id="invoicePreview">
+        <div class="inv-header"><div class="seller-block"><h2 id="previewSellerName"></h2><div id="previewSellerInfo" class="small"></div></div><div class="qr-block"><div id="qrContainer"></div><div class="small" style="margin-top:6px" data-translate="qrScan">امسح QR للتحقق</div></div></div>
+        <h1 class="invoice-title" id="invoiceTitle"></h1>
+        <div id="previewClient" class="preview-client-details"></div>
+        <div class="preview-meta"><div class="meta-item"><div class="small" data-translate="previewInvoiceNo">فاتورة رقم:</div><div id="previewInvoiceNo" class="meta-value"></div></div><div class="meta-item"><div class="small" data-translate="previewDate">التاريخ:</div><div id="previewDate" class="meta-value"></div></div></div>
+        <div id="previewItems" class="preview-items-container"></div><div id="previewTotals" class="preview-totals-container"></div><footer class="small" data-translate="thankYou">شكرا لكم</footer>
+    </div>
+    <div class="preview receipt-preview" id="receiptPreview">
+        <div class="receipt-header"><h2 id="receiptPreviewSellerName"></h2><div class="small" id="receiptPreviewSellerInfo"></div></div>
+        <h1 class="receipt-title" data-translate="receiptVoucherTitle">سند تحصيل</h1>
+        <table class="receipt-details-table">
+            <tbody>
+                <tr><td class="receipt-label" data-translate="previewReceiptNumber">رقم السند:</td><td id="receiptPreviewNumber"></td></tr>
+                <tr><td class="receipt-label" data-translate="previewDate">التاريخ:</td><td id="receiptPreviewDate"></td></tr>
+                <tr><td class="receipt-label" data-translate="previewReceivedFrom">استلمنا من السيد/السادة:</td><td id="receiptPreviewCustomer"></td></tr>
+                <tr><td class="receipt-label" data-translate="previewAmount">مبلغ وقدره:</td><td id="receiptPreviewAmount"></td></tr>
+                <tr><td class="receipt-label" data-translate="previewFor">وذلك عن:</td><td id="receiptPreviewDesc"></td></tr>
+                <tr><td class="receipt-label" data-translate="previewPaymentMethod">طريقة الدفع:</td><td id="receiptPreviewPayment"></td></tr>
+            </tbody>
+        </table>
+        <div class="receipt-signatures"><div><strong data-translate="signatureReceiver">المستلم: ....................</strong></div><div><strong data-translate="signatureStamp">الختم:</strong></div></div>
+    </div>
+    <div class="statement-preview" id="statementPreview">
+        <div class="statement-header"><h2 id="statementSellerName"></h2><div class="small" id="statementSellerInfo"></div><h1 style="margin-top: 20px;" data-translate="accountStatementTitle">كشف حساب عميل</h1></div>
+        <div id="statementClientInfo" class="statement-client-info"></div>
+        <table class="log-table" id="statementTable"><thead><tr><th data-translate="logDate">التاريخ</th><th data-translate="statementTransaction">الحركة</th><th data-translate="statementDebit">مدين</th><th data-translate="statementCredit">دائن</th><th data-translate="balance">الرصيد</th></tr></thead><tbody id="statementTableBody"></tbody></table>
+        <div id="statementSummary" class="statement-summary"></div>
+    </div>
+  </div>
+</div>
+<script src="main.js"></script>
+</body>
+</html>
