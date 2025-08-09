@@ -66,17 +66,43 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
 .receipt-signatures, .statement-summary {margin-top: 40px; display: flex; justify-content: space-between; font-size: 0.9em;}
 .statement-client-info {margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 6px;}
 
-/* Responsive Design for Mobile */
+/* === MODIFIED FOR BETTER MOBILE VIEW === */
 @media (max-width: 768px) {
     .wrap { padding: 8px; margin: 8px auto; }
-    .header-controls, .row { flex-direction: column; align-items: stretch; gap: 8px; }
+    
+    .header-controls { 
+        flex-direction: column; 
+        align-items: stretch; 
+        gap: 12px;
+    }
+    
+    /* This rule controls the spacing of form rows */
+    .row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px; /* Sets space between label/input pairs */
+    }
+
+    /* This adds space between entire rows of inputs */
+    .row + .row {
+        margin-top: 12px;
+    }
+    
     .header-controls h1 { text-align: center; }
     .header-buttons { justify-content: center; flex-direction: column; }
     .welcome-user { order: -1; text-align: center; margin-bottom: 10px; }
     .tabs-nav, .sub-tabs-nav { justify-content: flex-start; overflow-x: auto; }
     .tab-btn, .sub-tab-btn { white-space: nowrap; font-size: 14px; padding: 8px 10px;}
-    .col { min-width: 100%; margin-bottom: 10px;}
-    .customer-col { padding-bottom: 18px; }
+    
+    /* Removed margin from columns to rely on row gap for spacing */
+    .col { 
+        min-width: 100%; 
+        margin-bottom: 0; 
+    }
+    
+    /* Keeps space for the balance display which is positioned absolutely */
+    .customer-col { padding-bottom: 18px; } 
+
     .actions { flex-direction: column; align-items: stretch; }
     .actions .btn { width: 100%; }
     .log-table .actions { flex-direction: column; gap: 5px; }
@@ -85,6 +111,8 @@ body[dir="ltr"] .receipt-details-table {text-align: left;}
     .invoice-preview .inv-header { flex-direction: column; align-items: center; }
     .invoice-preview .seller-block, body[dir="ltr"] .invoice-preview .seller-block { text-align: center; margin-bottom: 15px; }
 }
+/* === END OF MOBILE MODIFICATIONS === */
+
 
 /* Print Styles */
 @media print{
