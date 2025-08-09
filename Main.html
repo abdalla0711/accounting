@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loggedInUser = sessionStorage.getItem('loggedInUser');
     if (!loggedInUser) {
         // IMPORTANT: Make sure you have a 'login.html' file in the same directory
-        window.location.href = 'login.html'; 
+        window.location.href = 'index.html'; 
         return; // Stop script execution
     }
 
@@ -1066,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('welcomeUser').innerText = `مرحباً، ${loggedInUser}`;
         $('logoutBtn').addEventListener('click', () => {
             sessionStorage.removeItem('loggedInUser');
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         });
 
         // Event Listeners for main actions
