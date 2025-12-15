@@ -1,280 +1,0 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الخبير المحاسبي</title>
-    <link rel="stylesheet" href="main.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-</head>
-<body>
-
-<div class="wrap no-print">
-    <div class="card">
-        <div class="header">
-            <h2>الخبير المحاسبي</h2>
-            <div>
-                <span id="userDisplay" style="margin-left: 10px; font-weight: bold;"></span>
-                <button class="btn danger" onclick="logout()">خروج</button>
-            </div>
-        </div>
-
-        <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('tabSales')">مبيعات</button>
-            <button class="tab-btn" onclick="showTab('tabPurchases')">مشتريات</button>
-            <button class="tab-btn" onclick="showTab('tabReceipts')">سندات</button>
-            <button class="tab-btn" onclick="showTab('tabItems')">أصناف</button>
-            <button class="tab-btn" onclick="showTab('tabCustomers')">عملاء</button>
-            <button class="tab-btn" onclick="showTab('tabSuppliers')">موردين</button>
-            <button class="tab-btn" onclick="showTab('tabReports')">تقارير</button>
-            <button class="tab-btn" onclick="showTab('tabSettings')">إعدادات</button>
-        </div>
-
-        <!-- Sales Tab -->
-        <div id="tabSales" class="tab-content active">
-            <div class="row">
-                <div class="col"><button class="btn" onclick="newInvoice()">➕ فاتورة جديدة</button></div>
-                <div class="col"><button class="btn success" onclick="saveInvoice()">💾 حفظ الفاتورة</button></div>
-            </div>
-            <div class="row" style="background:#f9f9f9; padding:10px; border-radius:5px;">
-                <div class="col">
-                    <label>رقم الفاتورة</label>
-                    <input type="text" id="invNum">
-                    <small id="nextInvHint" style="color:green"></small>
-                </div>
-                <div class="col"><label>التاريخ</label><input type="datetime-local" id="invDate"></div>
-                <div class="col">
-                    <label>العميل</label>
-                    <input type="text" id="invCust" list="dlCustomers" oninput="checkDebt(this.value)">
-                    <div id="debtBox" class="debt-box"></div>
-                </div>
-            </div>
-            <table>
-                <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>حذف</th></tr></thead>
-                <tbody id="invItems"></tbody>
-            </table>
-            <button class="btn secondary" onclick="addInvRow()" style="margin-top:5px">➕ إضافة صنف</button>
-            <div class="summary">
-                <h3>الإجمالي: <span id="invTotal">0.00</span> | الضريبة: <span id="invVat">0.00</span> | الصافي: <span id="invGrand">0.00</span></h3>
-            </div>
-            <hr>
-            <h3>سجل الفواتير</h3>
-            <table id="tblInvoices"><thead><tr><th>الرقم</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>تحكم</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <!-- Purchases Tab -->
-        <div id="tabPurchases" class="tab-content">
-            <div class="row">
-                <div class="col"><button class="btn" onclick="newPurchase()">➕ فاتورة شراء جديدة</button></div>
-                <div class="col"><button class="btn success" onclick="savePurchase()">💾 حفظ الشراء</button></div>
-            </div>
-            <div class="row">
-                <div class="col"><label>رقم فاتورة المورد</label><input type="text" id="purNum"></div>
-                <div class="col"><label>التاريخ</label><input type="datetime-local" id="purDate"></div>
-                <div class="col"><label>المورد</label><input type="text" id="purSup" list="dlSuppliers"></div>
-            </div>
-            <table>
-                <thead><tr><th>الصنف</th><th>الكمية</th><th>التكلفة</th><th>الإجمالي</th><th>حذف</th></tr></thead>
-                <tbody id="purItems"></tbody>
-            </table>
-            <button class="btn secondary" onclick="addPurRow()" style="margin-top:5px">➕ إضافة صنف</button>
-            <div class="summary"><h3>الإجمالي: <span id="purTotal">0.00</span></h3></div>
-            <hr>
-            <h3>سجل المشتريات</h3>
-            <table id="tblPurchases"><thead><tr><th>الرقم</th><th>التاريخ</th><th>المورد</th><th>المبلغ</th><th>تحكم</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <!-- Receipts Tab -->
-        <div id="tabReceipts" class="tab-content">
-            <div class="row">
-                <div class="col"><button class="btn" onclick="newReceipt()">➕ سند جديد</button></div>
-                <div class="col"><button class="btn success" onclick="saveReceipt()">💾 حفظ السند</button></div>
-            </div>
-            <div class="row">
-                <div class="col"><label>رقم السند</label><input type="text" id="recNum"></div>
-                <div class="col"><label>التاريخ</label><input type="datetime-local" id="recDate"></div>
-                <div class="col">
-                    <label>العميل</label>
-                    <input type="text" id="recCust" list="dlCustomers" oninput="showRecBalance(this.value)">
-                    <small id="recBalanceHint" style="color:blue; font-weight:bold"></small>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col"><label>المبلغ</label><input type="number" id="recAmount"></div>
-                <div class="col"><label>طريقة الدفع</label><select id="recType"><option>نقدي</option><option>تحويل</option><option>شبكة</option></select></div>
-                <div class="col"><label>ملاحظات</label><input type="text" id="recNote"></div>
-            </div>
-            <hr>
-            <h3>سجل السندات</h3>
-            <table id="tblReceipts"><thead><tr><th>الرقم</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>تحكم</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <!-- Items Tab -->
-        <div id="tabItems" class="tab-content">
-            <div class="row">
-                <div class="col"><label>اسم الصنف</label><input type="text" id="itmName"></div>
-                <div class="col"><label>سعر البيع</label><input type="number" id="itmPrice"></div>
-                <div class="col"><br><button class="btn success" onclick="saveItem()">حفظ الصنف</button></div>
-            </div>
-            <table id="tblItems"><thead><tr><th>الصنف</th><th>السعر</th><th>مباع</th><th>تحكم</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <!-- Customers Tab -->
-        <div id="tabCustomers" class="tab-content">
-            <div class="row">
-                <div class="col"><label>اسم العميل</label><input type="text" id="custName"></div>
-                <div class="col"><label>الرقم الضريبي</label><input type="text" id="custTax"></div>
-                <div class="col"><label>جوال</label><input type="text" id="custPhone"></div>
-            </div>
-            <label>العنوان الوطني</label>
-            <div class="address-grid">
-                <input id="custCity" placeholder="المدينة"><input id="custDist" placeholder="الحي">
-                <input id="custSt" placeholder="الشارع"><input id="custBuild" placeholder="مبنى">
-                <input id="custZip" placeholder="رمز بريدي"><input id="custAdd" placeholder="رقم إضافي">
-            </div>
-            <button class="btn success" onclick="saveCustomer()" style="margin-top:10px">حفظ العميل</button>
-            <hr>
-            <table id="tblCustomers"><thead><tr><th>الاسم</th><th>الرقم الضريبي</th><th>جوال</th><th>الرصيد</th><th>تحكم</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <!-- Suppliers Tab -->
-        <div id="tabSuppliers" class="tab-content">
-            <div class="row">
-                <div class="col"><label>اسم المورد</label><input type="text" id="supName"></div>
-                <div class="col"><label>الرقم الضريبي</label><input type="text" id="supTax"></div>
-                <div class="col"><label>جوال</label><input type="text" id="supPhone"></div>
-            </div>
-            <label>العنوان الوطني</label>
-            <div class="address-grid">
-                <input id="supCity" placeholder="المدينة"><input id="supDist" placeholder="الحي">
-                <input id="supSt" placeholder="الشارع"><input id="supBuild" placeholder="مبنى">
-                <input id="supZip" placeholder="رمز بريدي"><input id="supAdd" placeholder="رقم إضافي">
-            </div>
-            <button class="btn success" onclick="saveSupplier()" style="margin-top:10px">حفظ المورد</button>
-            <hr>
-            <table id="tblSuppliers"><thead><tr><th>الاسم</th><th>الرقم الضريبي</th><th>جوال</th><th>تحكم</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <!-- Reports Tab -->
-        <div id="tabReports" class="tab-content">
-            <div class="row" style="background:#eee; padding:15px; border-radius:5px">
-                <div class="col">
-                    <label>نوع التقرير</label>
-                    <select id="repType">
-                        <option value="sales">مبيعات</option>
-                        <option value="purchases">مشتريات</option>
-                        <option value="inventory">مخزون</option>
-                        <option value="collections">تحصيلات</option>
-                        <option value="debts">مديونية عملاء</option>
-                    </select>
-                </div>
-                <div class="col"><label>من</label><input type="date" id="repStart"></div>
-                <div class="col"><label>إلى</label><input type="date" id="repEnd"></div>
-                <div class="col">
-                    <br>
-                    <button class="btn success" onclick="runReport()">عرض</button>
-                    <button class="btn warning" onclick="printReportDiv()">طباعة</button>
-                    <button class="btn secondary" onclick="exportReport()">Excel</button>
-                </div>
-            </div>
-            <div id="reportOutput" class="report-area" style="margin-top:20px">
-                <h3 id="repTitle" style="text-align:center"></h3>
-                <div id="repCards" class="report-cards"></div>
-                <table id="tblReport"><thead></thead><tbody></tbody></table>
-            </div>
-        </div>
-
-        <!-- Settings Tab -->
-        <div id="tabSettings" class="tab-content">
-            <div class="row">
-                <div class="col">
-                    <label>اسم الشركة</label><input type="text" id="setCoName">
-                    <label>الرقم الضريبي</label><input type="text" id="setTax">
-                    <label>الهاتف</label><input type="text" id="setPhone">
-                </div>
-                <div class="col">
-                    <label>شعار الشركة</label>
-                    <input type="file" id="setLogoFile" onchange="loadLogo(this)">
-                    <img id="setLogoPreview" class="logo-preview">
-                </div>
-            </div>
-            <label>العنوان الوطني للشركة</label>
-            <div class="address-grid">
-                <input id="setCity" placeholder="المدينة"><input id="setDist" placeholder="الحي">
-                <input id="setSt" placeholder="الشارع"><input id="setBuild" placeholder="مبنى">
-                <input id="setZip" placeholder="رمز بريدي"><input id="setAdd" placeholder="رقم إضافي">
-            </div>
-            <button class="btn success" onclick="saveSettings()" style="margin-top:10px">حفظ الإعدادات</button>
-            <hr>
-            <div class="row">
-                <div class="col"><button class="btn" onclick="exportData()">تصدير نسخة احتياطية</button></div>
-                <div class="col"><input type="file" id="importFile" onchange="importData(this)"></div>
-                <div class="col"><button class="btn danger" onclick="wipeData()">مسح كل البيانات</button></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Datalists -->
-<datalist id="dlCustomers"></datalist>
-<datalist id="dlSuppliers"></datalist>
-<datalist id="dlItems"></datalist>
-
-<!-- Print Divs -->
-<div id="printInvoiceDiv" class="print-area">
-    <div class="print-header">
-        <div>
-            <h2 id="pInvCo"></h2>
-            <p id="pInvCoDet"></p>
-            <p id="pInvAddr"></p>
-        </div>
-        <div>
-            <img id="pInvLogo" class="print-logo">
-            <div id="pInvQR" style="margin-top:5px"></div>
-        </div>
-    </div>
-    <h2 style="text-align:center">فاتورة ضريبية</h2>
-    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-        <div id="pInvCust"></div>
-        <div style="text-align:left">
-            <p><strong>الرقم:</strong> <span id="pInvNum"></span></p>
-            <p><strong>التاريخ:</strong> <span id="pInvDate"></span></p>
-        </div>
-    </div>
-    <table id="pInvTable"><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody></tbody></table>
-    <div style="text-align:left; margin-top:10px">
-        <h3>الإجمالي النهائي: <span id="pInvGrand"></span></h3>
-    </div>
-</div>
-
-<div id="printReceiptDiv" class="print-area">
-    <div class="print-header">
-        <div><h2 id="pRecCo"></h2><p id="pRecCoDet"></p></div>
-        <img id="pRecLogo" class="print-logo">
-    </div>
-    <h2 style="text-align:center">سند قبض</h2>
-    <div style="border:1px solid #000; padding:15px; margin-top:20px; line-height:2">
-        <p><strong>رقم السند:</strong> <span id="pRecNum"></span> <span style="float:left"><strong>التاريخ:</strong> <span id="pRecDate"></span></span></p>
-        <p><strong>استلمنا من السيد/السادة:</strong> <span id="pRecCust"></span></p>
-        <p><strong>مبلغ وقدره:</strong> <span id="pRecAmount"></span> ريال</p>
-        <p><strong>وذلك عن:</strong> <span id="pRecNote"></span></p>
-        <p><strong>طريقة الدفع:</strong> <span id="pRecType"></span></p>
-    </div>
-    <div style="margin-top:30px; display:flex; justify-content:space-between">
-        <p>المستلم: .................</p>
-        <p>الختم والتوقيع</p>
-    </div>
-</div>
-
-<div id="printReportDiv" class="print-area">
-    <div style="text-align:center">
-        <h2 id="pRepCo"></h2>
-        <h3 id="pRepTitle"></h3>
-    </div>
-    <div id="pRepContent"></div>
-</div>
-
-<script src="main.js"></script>
-</body>
-</html>
