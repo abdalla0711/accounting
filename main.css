@@ -75,7 +75,7 @@ input, select, textarea {width:100%;padding:8px;border:1px solid #d8dbe0;border-
 .receipt-details-table td {padding: 6px; border-bottom: 1px solid #f0f0f0;}
 .receipt-signatures, .statement-summary {margin-top: 40px; display: flex; justify-content: space-between;}
 
-/* Print Styles - FIXED */
+/* Print Styles */
 @media print {
     body { background: white; color: black; }
     .wrap, .card { box-shadow: none; max-width: 100%; margin: 0; padding: 0; border: none; }
@@ -86,7 +86,7 @@ input, select, textarea {width:100%;padding:8px;border:1px solid #d8dbe0;border-
 
     /* Show specific elements based on class */
     body.printing-invoice .invoice-preview { display: block !important; }
-    body.printing-purchase .purchase-preview { display: block !important; } /* New Purchase Preview */
+    body.printing-purchase .purchase-preview { display: block !important; } 
     body.printing-receipt .receipt-preview { display: block !important; }
     body.printing-statement .statement-preview { display: block !important; }
     
