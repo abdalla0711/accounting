@@ -1,624 +1,451 @@
-/* --- START OF FILE main.js --- */
+// --- Database & State ---
+let db = { invoices:[], purchases:[], receipts:[], customers:[], suppliers:[], items:[], settings:{} };
+const user = sessionStorage.getItem('loggedInUser');
 
-// --- GLOBAL DEFINITIONS ---
-let invoicesDB = [], receiptsDB = [], itemsDB = [], customersDB = [], suppliersDB = [], purchasesDB = [], sellerInfo = {};
-let editingInvoiceId = null, editingReceiptId = null, editingItemId = null;
-let currentLang = 'ar';
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    document.getElementById('userDisplay').innerText = user;
+    
+    // Load Data
+    const saved = localStorage.getItem('myAppData_' + user);
+    if (saved) db = JSON.parse(saved);
+    
+    // Set defaults if empty
+    if (!db.settings) db.settings = { name:'شركتي', tax:'', phone:'' };
+    
+    refreshAll();
+    setupDateDefaults();
+});
 
-const defaultSellerInfo = { 
-    name: "اسم الشركة", taxNumber: "", phone: "", logo: "", 
-    address: { city:"", district:"", street:"", build:"", zip:"", addNo:"" } 
-};
-
-// --- HELPERS ---
-const $ = (id) => document.getElementById(id);
-const toLocalISO = (d) => new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
-const formatMoney = (n) => parseFloat(n || 0).toFixed(2);
-const getInvoice = (id) => invoicesDB.find(i => i.invoiceNumber === id);
-
-// --- ZATCA TLV ---
-function zatcaDataToBase64(sellerName, sellerTaxNumber, timestamp, invoiceTotal, vatTotal) {
-    const toTlv = (tag, value) => {
-        const valBytes = new TextEncoder().encode(String(value));
-        const tlv = new Uint8Array(2 + valBytes.length);
-        tlv[0] = tag; tlv[1] = valBytes.length; tlv.set(valBytes, 2);
-        return tlv;
-    };
-    const parts = [toTlv(1, sellerName), toTlv(2, sellerTaxNumber), toTlv(3, timestamp), toTlv(4, String(invoiceTotal)), toTlv(5, String(vatTotal))];
-    const combined = new Uint8Array(parts.reduce((acc, p) => acc + p.length, 0));
-    let offset = 0;
-    parts.forEach(p => { combined.set(p, offset); offset += p.length; });
-    return btoa(String.fromCharCode.apply(null, combined));
+// --- Core Functions ---
+function saveData() {
+    localStorage.setItem('myAppData_' + user, JSON.stringify(db));
+    refreshAll();
 }
 
-// --- GLOBAL WINDOW FUNCTIONS ---
+function refreshAll() {
+    // Fill Datalists
+    fillDL('dlCustomers', db.customers, 'name');
+    fillDL('dlSuppliers', db.suppliers, 'name');
+    fillDL('dlItems', db.items, 'name', 'price');
+    
+    // Render Tables
+    renderTable('tblInvoices', db.invoices, ['num','date','cust','grand'], true, 'printInvoice');
+    renderTable('tblPurchases', db.purchases, ['num','date','sup','total'], true, 'printPurchase');
+    renderTable('tblReceipts', db.receipts, ['num','date','cust','amount'], true, 'printReceipt');
+    renderTable('tblItems', db.items, ['name','price','sold'], true); // 'sold' needs calc
+    renderTable('tblCustomers', db.customers, ['name','tax','phone','balance'], true, 'printStatement');
+    renderTable('tblSuppliers', db.suppliers, ['name','tax','phone'], true);
+    
+    // Update next number hints
+    document.getElementById('nextInvHint').innerText = "التالي: " + getNextNum('INV');
+}
 
-window.logoutUser = function() {
+function fillDL(id, arr, key, dataAttr=null) {
+    const dl = document.getElementById(id); dl.innerHTML = '';
+    arr.forEach(x => {
+        const op = document.createElement('option');
+        op.value = x[key];
+        if(dataAttr) op.dataset.extra = x[dataAttr];
+        dl.appendChild(op);
+    });
+}
+
+function setupDateDefaults() {
+    const now = new Date().toISOString().slice(0,16);
+    ['invDate','purDate','recDate'].forEach(id => document.getElementById(id).value = now);
+}
+
+function showTab(id) {
+    document.querySelectorAll('.tab-content').forEach(d => d.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).style.display = 'block';
+    event.target.classList.add('active');
+}
+
+function logout() {
     sessionStorage.removeItem('loggedInUser');
     window.location.href = 'index.html';
-};
+}
 
-window.toggleLanguage = function() {
-    currentLang = currentLang === 'ar' ? 'en' : 'ar';
-    document.documentElement.lang = currentLang;
-    document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
-    const btn = $('langToggleBtn'); if(btn) btn.innerText = currentLang === 'ar' ? 'English' : 'العربية';
-};
+// --- Sales / Invoices ---
+function newInvoice() {
+    document.getElementById('invNum').value = getNextNum('INV');
+    document.getElementById('invCust').value = '';
+    document.getElementById('invItems').innerHTML = '';
+    document.getElementById('debtBox').style.display = 'none';
+    calcInv();
+    addInvRow();
+}
 
-window.switchTab = function(tabId) {
-    document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
-    const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-    if(btn) btn.classList.add('active');
-    
-    document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); 
-    if($(tabId)) $(tabId).classList.add('active');
-};
-
-window.switchSubTab = function(parentId, tabId) {
-    const p = $(parentId); if(!p) return;
-    p.querySelectorAll('.sub-tab-btn').forEach(x=>x.classList.remove('active')); 
-    const btn = document.querySelector(`.sub-tab-btn[data-tab="${tabId}"]`);
-    if(btn) btn.classList.add('active');
-    
-    p.querySelectorAll('.sub-tab-content').forEach(x=>x.classList.remove('active')); 
-    if($(tabId)) $(tabId).classList.add('active');
-};
-
-// --- Invoice ---
-window.addItem = function(desc='', qty=1, price=0) {
-    const tbody = $('itemsBody');
+function addInvRow() {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><input class="itm-desc" value="${desc}" list="itemsDatalist" onchange="updateItemPrice(this)"></td>
-                    <td><input class="itm-qty" type="number" value="${qty}" oninput="calcInvoice()"></td>
-                    <td><input class="itm-price" type="number" value="${price}" oninput="calcInvoice()"></td>
-                    <td class="itm-total">0.00</td>
-                    <td><button class="btn danger small-action" onclick="this.closest('tr').remove();calcInvoice();" type="button">x</button></td>`;
-    tbody.appendChild(tr);
-    calcInvoice();
-};
-window.updateItemPrice = function(input) {
-    const opt = Array.from($('itemsDatalist').options).find(o=>o.value===input.value);
-    if(opt) {
-        input.closest('tr').querySelector('.itm-price').value = opt.dataset.price;
-        calcInvoice();
+    tr.innerHTML = `
+        <td><input class="row-name" list="dlItems" onchange="setPrice(this)"></td>
+        <td><input type="number" class="row-qty" value="1" oninput="calcInv()"></td>
+        <td><input type="number" class="row-price" value="0" oninput="calcInv()"></td>
+        <td class="row-total">0.00</td>
+        <td><button class="btn danger" onclick="this.closest('tr').remove();calcInv()">x</button></td>
+    `;
+    document.getElementById('invItems').appendChild(tr);
+}
+
+function setPrice(inp) {
+    const val = inp.value;
+    const list = document.getElementById('dlItems').options;
+    for(let op of list) {
+        if(op.value === val) {
+            inp.closest('tr').querySelector('.row-price').value = op.dataset.extra;
+            calcInv(); break;
+        }
     }
-};
-window.calcInvoice = function() {
-    let sub = 0;
-    document.querySelectorAll('#itemsBody tr').forEach(row => {
-        const q = parseFloat(row.querySelector('.itm-qty').value)||0;
-        const p = parseFloat(row.querySelector('.itm-price').value)||0;
-        const t = q*p;
-        row.querySelector('.itm-total').innerText = formatMoney(t);
-        sub += t;
+}
+
+function calcInv() {
+    let total = 0;
+    document.querySelectorAll('#invItems tr').forEach(tr => {
+        const q = parseFloat(tr.querySelector('.row-qty').value) || 0;
+        const p = parseFloat(tr.querySelector('.row-price').value) || 0;
+        const t = q * p;
+        tr.querySelector('.row-total').innerText = t.toFixed(2);
+        total += t;
     });
-    const vat = sub * 0.15;
-    $('subTotal').innerText = formatMoney(sub);
-    $('vatTotal').innerText = formatMoney(vat);
-    $('grandTotal').innerText = formatMoney(sub + vat);
-};
-window.resetInvoiceForm = function() {
-    editingInvoiceId=null;
-    const nextNum = getNextNumber(invoicesDB, 'INV');
-    $('invoiceNumber').value = nextNum; 
-    $('invoiceNumHint').innerText = `مقترح: ${nextNum}`;
-    $('invoiceDate').value=toLocalISO(new Date()); 
-    $('itemsBody').innerHTML=''; 
-    $('customerName').value='';
-    $('customerTaxNumber').value='';
-    $('customerDebtDetails').style.display='none';
-    window.addItem();
-};
-window.saveInvoice = function() {
-    const custName = $('customerName').value;
-    const custOpt = Array.from($('customersDatalist').options).find(o=>o.value===custName);
-    if(!custOpt) return alert('اختر عميلاً صحيحاً');
-    
-    const data = {
-        invoiceNumber: $('invoiceNumber').value,
-        invoiceDate: $('invoiceDate').value,
-        customerCode: custOpt.dataset.code, customerName: custName,
-        subTotal: $('subTotal').innerText, vatTotal: $('vatTotal').innerText, grandTotal: $('grandTotal').innerText,
-        items: Array.from(document.querySelectorAll('#itemsBody tr')).map(r => ({
-            description: r.querySelector('.itm-desc').value, quantity: r.querySelector('.itm-qty').value, price: r.querySelector('.itm-price').value, total: r.querySelector('.itm-total').innerText
-        }))
+    const vat = total * 0.15;
+    document.getElementById('invTotal').innerText = total.toFixed(2);
+    document.getElementById('invVat').innerText = vat.toFixed(2);
+    document.getElementById('invGrand').innerText = (total + vat).toFixed(2);
+}
+
+function saveInvoice() {
+    const inv = {
+        num: document.getElementById('invNum').value,
+        date: document.getElementById('invDate').value,
+        cust: document.getElementById('invCust').value,
+        total: document.getElementById('invTotal').innerText,
+        vat: document.getElementById('invVat').innerText,
+        grand: document.getElementById('invGrand').innerText,
+        items: []
     };
-    if(editingInvoiceId) {
-        const idx = invoicesDB.findIndex(i=>i.invoiceNumber===editingInvoiceId);
-        if(idx>-1) invoicesDB[idx] = data;
-    } else { invoicesDB.push(data); }
-    saveAllData(); renderAllLogs(); alert('تم الحفظ'); window.resetInvoiceForm();
-};
+    if(!inv.cust) return alert('العميل مطلوب');
+    
+    document.querySelectorAll('#invItems tr').forEach(tr => {
+        inv.items.push({
+            name: tr.querySelector('.row-name').value,
+            qty: tr.querySelector('.row-qty').value,
+            price: tr.querySelector('.row-price').value,
+            total: tr.querySelector('.row-total').innerText
+        });
+    });
+    
+    db.invoices.push(inv);
+    saveData();
+    alert('تم الحفظ');
+    newInvoice();
+}
 
-window.showCustomerDebt = function(val) {
-    const opt = Array.from($('customersDatalist').options).find(o => o.value === val);
-    const box = $('customerDebtDetails');
-    if (opt) {
-        const code = opt.dataset.code;
-        const cust = customersDB.find(c => c.id === code);
-        $('customerTaxNumber').value = cust ? cust.taxNumber : '';
-        const sales = invoicesDB.filter(i => i.customerCode == code).reduce((a, b) => a + parseFloat(b.grandTotal || 0), 0);
-        const collected = receiptsDB.filter(r => r.customerCode == code).reduce((a, b) => a + parseFloat(b.amount || 0), 0);
-        
-        let invList = '<ul style="margin:5px 0; padding-right:15px; font-size:12px">';
-        invoicesDB.filter(i => i.customerCode == code).slice(-5).reverse().forEach(inv => { invList += `<li>${inv.invoiceNumber} (${inv.grandTotal})</li>`; });
-        invList += '</ul>';
-
-        box.innerHTML = `<h4>رصيد العميل: ${val}</h4>
-                         <div style="color:red; font-weight:bold; margin-top:5px">المتبقي: ${formatMoney(sales - collected)}</div>
-                         <div style="margin-top:5px; border-top:1px dashed #ccc">آخر فواتير:</div>${invList}`;
-        box.style.display = 'block';
-    } else { $('customerTaxNumber').value = ''; box.style.display = 'none'; }
-};
+function checkDebt(name) {
+    const sold = db.invoices.filter(x => x.cust === name).reduce((a,b)=>a+parseFloat(b.grand),0);
+    const paid = db.receipts.filter(x => x.cust === name).reduce((a,b)=>a+parseFloat(b.amount),0);
+    const debt = sold - paid;
+    const box = document.getElementById('debtBox');
+    
+    let lastInvs = db.invoices.filter(x => x.cust === name).slice(-3).map(x => `<li>${x.num}: ${x.grand}</li>`).join('');
+    
+    box.style.display = 'block';
+    box.innerHTML = `المديونية الحالية: <b>${debt.toFixed(2)}</b> ريال<br>آخر فواتير:<ul>${lastInvs}</ul>`;
+}
 
 // --- Purchases ---
-window.addPurchaseItem = function() {
-    const tbody = $('purchaseItemsBody');
+function newPurchase() {
+    document.getElementById('purNum').value = '';
+    document.getElementById('purSup').value = '';
+    document.getElementById('purItems').innerHTML = '';
+    addPurRow();
+}
+function addPurRow() {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><input class="p-desc" list="itemsDatalist"></td><td><input class="p-qty" type="number" value="1" oninput="calcPurchase()"></td><td><input class="p-cost" type="number" value="0" oninput="calcPurchase()"></td><td class="p-total">0.00</td><td><button class="btn danger small-action" onclick="this.closest('tr').remove();calcPurchase();" type="button">x</button></td>`;
-    tbody.appendChild(tr);
-};
-window.calcPurchase = function() {
-    let sub = 0;
-    document.querySelectorAll('#purchaseItemsBody tr').forEach(row => {
-        const q = parseFloat(row.querySelector('.p-qty').value)||0;
-        const c = parseFloat(row.querySelector('.p-cost').value)||0;
-        const t = q*c;
-        row.querySelector('.p-total').innerText = formatMoney(t);
-        sub += t;
+    tr.innerHTML = `<td><input class="p-name" list="dlItems"></td><td><input type="number" class="p-qty" value="1"></td><td><input type="number" class="p-cost" value="0" oninput="calcPur()"></td><td class="p-total">0.00</td><td><button class="btn danger" onclick="this.closest('tr').remove();calcPur()">x</button></td>`;
+    document.getElementById('purItems').appendChild(tr);
+}
+function calcPur() {
+    let t = 0;
+    document.querySelectorAll('#purItems tr').forEach(tr => {
+        const s = (parseFloat(tr.querySelector('.p-qty').value)||0) * (parseFloat(tr.querySelector('.p-cost').value)||0);
+        tr.querySelector('.p-total').innerText = s.toFixed(2); t += s;
     });
-    const vat = sub * 0.15;
-    $('purchaseSubTotal').innerText = formatMoney(sub);
-    $('purchaseVatTotal').innerText = formatMoney(vat);
-    $('purchaseGrandTotal').innerText = formatMoney(sub + vat);
-};
-window.resetPurchaseForm = function() {
-    $('purchaseNumber').value=''; $('purchaseDate').value=toLocalISO(new Date()); 
-    $('purchaseItemsBody').innerHTML=''; $('supplierName').value=''; window.addPurchaseItem();
-};
-window.savePurchase = function() {
-    const supName = $('supplierName').value;
-    const supOpt = Array.from($('suppliersDatalist').options).find(o=>o.value===supName);
-    if(!supOpt) return alert('اختر مورداً صحيحاً');
-    const data = {
-        invoiceNumber: $('purchaseNumber').value || `PUR-${Date.now()}`,
-        invoiceDate: $('purchaseDate').value,
-        supplierCode: supOpt.dataset.code, supplierName: supName,
-        grandTotal: $('purchaseGrandTotal').innerText,
-        items: Array.from(document.querySelectorAll('#purchaseItemsBody tr')).map(r => ({
-            description: r.querySelector('.p-desc').value, quantity: r.querySelector('.p-qty').value, cost: r.querySelector('.p-cost').value
-        }))
+    document.getElementById('purTotal').innerText = t.toFixed(2);
+}
+function savePurchase() {
+    const pur = {
+        num: document.getElementById('purNum').value || 'PUR-'+Date.now(),
+        date: document.getElementById('purDate').value,
+        sup: document.getElementById('purSup').value,
+        total: document.getElementById('purTotal').innerText,
+        items: []
     };
-    purchasesDB.push(data); saveAllData(); renderAllLogs(); alert("تم حفظ الشراء"); window.resetPurchaseForm();
-};
+    if(!pur.sup) return alert('المورد مطلوب');
+    document.querySelectorAll('#purItems tr').forEach(tr => {
+        pur.items.push({ name: tr.querySelector('.p-name').value, qty: tr.querySelector('.p-qty').value });
+    });
+    db.purchases.push(pur);
+    saveData();
+    alert('تم الحفظ');
+    newPurchase();
+}
 
 // --- Receipts ---
-window.resetReceiptForm = function() {
-    editingReceiptId=null; 
-    $('receiptNumber').value = getNextNumber(receiptsDB, 'REC');
-    $('receiptDate').value=toLocalISO(new Date()); 
-    $('amountReceived').value=''; $('receiptDescription').value=''; 
-    $('receiptCustomerName').value = ''; $('receiptCustomerBalanceDisplay').innerText = '';
-};
-window.saveReceipt = function() {
-    const custName = $('receiptCustomerName').value;
-    const custOpt = Array.from($('customersDatalist').options).find(o=>o.value===custName);
-    if(!custOpt) return alert('اختر عميلاً');
-    const data = {
-        receiptNumber: $('receiptNumber').value, date: $('receiptDate').value,
-        customerCode: custOpt.dataset.code, customerName: custName,
-        amount: $('amountReceived').value, paymentMethod: $('paymentMethod').value, description: $('receiptDescription').value
+function newReceipt() {
+    document.getElementById('recNum').value = getNextNum('REC');
+    document.getElementById('recCust').value = '';
+    document.getElementById('amountReceived').value = '';
+}
+function showRecBalance(name) {
+    const sold = db.invoices.filter(x => x.cust === name).reduce((a,b)=>a+parseFloat(b.grand),0);
+    const paid = db.receipts.filter(x => x.cust === name).reduce((a,b)=>a+parseFloat(b.amount),0);
+    document.getElementById('recBalanceHint').innerText = "الرصيد: " + (sold-paid).toFixed(2);
+}
+function saveReceipt() {
+    const rec = {
+        num: document.getElementById('recNum').value,
+        date: document.getElementById('recDate').value,
+        cust: document.getElementById('recCust').value,
+        amount: document.getElementById('recAmount').value,
+        type: document.getElementById('recType').value,
+        note: document.getElementById('recNote').value
     };
-    if(editingReceiptId) {
-        const idx = receiptsDB.findIndex(r=>r.receiptNumber===editingReceiptId);
-        if(idx>-1) receiptsDB[idx] = data;
-    } else { receiptsDB.push(data); }
-    saveAllData(); renderAllLogs(); alert("تم حفظ السند"); window.resetReceiptForm();
-};
-window.showReceiptBalance = function(val) {
-    const opt = Array.from($('customersDatalist').options).find(o => o.value === val);
-    const display = $('receiptCustomerBalanceDisplay');
-    if (opt) {
-        const code = opt.dataset.code;
-        const totalSales = invoicesDB.filter(i => i.customerCode == code).reduce((a, b) => a + parseFloat(b.grandTotal || 0), 0);
-        const totalCollected = receiptsDB.filter(r => r.customerCode == code).reduce((a, b) => a + parseFloat(b.amount || 0), 0);
-        display.innerText = `الرصيد الحالي: ${formatMoney(totalSales - totalCollected)}`;
-    } else { display.innerText = ''; }
-};
+    if(!rec.cust) return alert('العميل مطلوب');
+    db.receipts.push(rec);
+    saveData();
+    alert('تم الحفظ');
+    newReceipt();
+}
 
-// --- Basic Data Saves ---
-window.saveItem = function() {
-    const name = $('itemName').value; const price = $('itemPrice').value;
-    if(!name) return;
-    if(editingItemId!==null) itemsDB[editingItemId] = {name, price}; else itemsDB.push({name, price});
-    saveAllData(); renderAllLogs(); window.resetItemForm();
-};
-window.resetItemForm = function() { editingItemId=null; $('itemName').value=''; $('itemPrice').value=''; };
-
-window.saveCustomer = function() {
-    const data = { 
-        id: $('custCode').value, name: $('custName').value, taxNumber: $('custTaxNumber').value, phone: $('custPhone').value,
-        address: { city: $('custCity').value, district: $('custDistrict').value, street: $('custStreet').value, build: $('custBuild').value, zip: $('custZip').value, addNo: $('custAddNo').value }
+// --- Masters (Items, Cust, Sup) ---
+function saveItem() {
+    const item = { name: document.getElementById('itmName').value, price: document.getElementById('itmPrice').value };
+    if(!item.name) return;
+    // Update or Add
+    const idx = db.items.findIndex(x => x.name === item.name);
+    if(idx >= 0) db.items[idx] = item; else db.items.push(item);
+    saveData();
+    document.getElementById('itmName').value='';
+}
+function saveCustomer() {
+    const c = { 
+        name: document.getElementById('custName').value,
+        tax: document.getElementById('custTax').value,
+        phone: document.getElementById('custPhone').value,
+        addr: {
+            city: document.getElementById('custCity').value,
+            dist: document.getElementById('custDist').value,
+            st: document.getElementById('custSt').value,
+            build: document.getElementById('custBuild').value,
+            zip: document.getElementById('custZip').value,
+            add: document.getElementById('custAdd').value
+        }
     };
-    if(!data.id || !data.name) return alert('الكود والاسم مطلوبان');
-    const idx = customersDB.findIndex(c=>c.id===data.id); if(idx > -1) customersDB[idx] = data; else customersDB.push(data);
-    saveAllData(); renderAllLogs(); window.resetCustomerForm();
-};
-window.resetCustomerForm = function() { ['custCode','custName','custTaxNumber','custPhone','custCity','custDistrict','custStreet','custBuild','custZip','custAddNo'].forEach(id=>$(id).value=''); };
-
-window.saveSupplier = function() {
-    const data = { 
-        id: $('supCode').value, name: $('supName').value, taxNumber: $('supTaxNumber').value, phone: $('supPhone').value,
-        address: { city: $('supCity').value, district: $('supDistrict').value, street: $('supStreet').value, build: $('supBuild').value, zip: $('supZip').value, addNo: $('supAddNo').value }
+    if(!c.name) return;
+    const idx = db.customers.findIndex(x => x.name === c.name);
+    if(idx >= 0) db.customers[idx] = c; else db.customers.push(c);
+    saveData();
+    document.getElementById('custName').value='';
+}
+function saveSupplier() {
+    const s = { 
+        name: document.getElementById('supName').value,
+        tax: document.getElementById('supTax').value,
+        phone: document.getElementById('supPhone').value,
+        addr: {
+            city: document.getElementById('supCity').value,
+            dist: document.getElementById('supDist').value,
+            st: document.getElementById('supSt').value,
+            build: document.getElementById('supBuild').value,
+            zip: document.getElementById('supZip').value,
+            add: document.getElementById('supAdd').value
+        }
     };
-    if(!data.id || !data.name) return alert('الكود والاسم مطلوبان');
-    const idx = suppliersDB.findIndex(s=>s.id===data.id); if(idx > -1) suppliersDB[idx] = data; else suppliersDB.push(data);
-    saveAllData(); renderAllLogs(); window.resetSupplierForm();
-};
-window.resetSupplierForm = function() { ['supCode','supName','supTaxNumber','supPhone','supCity','supDistrict','supStreet','supBuild','supZip','supAddNo'].forEach(id=>$(id).value=''); };
-
-// --- Reports ---
-window.generateReport = function() {
-    const type = $('reportType').value;
-    const start = new Date($('reportStartDate').value || '2000-01-01');
-    const end = new Date($('reportEndDate').value || '2100-01-01');
-    end.setHours(23,59,59);
-
-    let data = [], cols = [], title = "", summary = "";
-    
-    if (type === 'sales') {
-        title = "تقرير المبيعات";
-        const filtered = invoicesDB.filter(i => new Date(i.invoiceDate) >= start && new Date(i.invoiceDate) <= end);
-        cols = ['رقم الفاتورة', 'التاريخ', 'العميل', 'الإجمالي'];
-        data = filtered.map(i => [i.invoiceNumber, formatDate(i.invoiceDate), i.customerName, i.grandTotal]);
-        const total = filtered.reduce((a,b)=>a+parseFloat(b.grandTotal||0),0);
-        summary = `<div class="report-card"><h3>إجمالي المبيعات</h3><div class="value">${formatMoney(total)}</div></div>`;
-    }
-    else if (type === 'purchases') {
-        title = "تقرير المشتريات";
-        const filtered = purchasesDB.filter(p => new Date(p.invoiceDate) >= start && new Date(p.invoiceDate) <= end);
-        cols = ['رقم الفاتورة', 'التاريخ', 'المورد', 'الإجمالي'];
-        data = filtered.map(p => [p.invoiceNumber, formatDate(p.invoiceDate), p.supplierName, p.grandTotal]);
-        const total = filtered.reduce((a,b)=>a+parseFloat(b.grandTotal||0),0);
-        summary = `<div class="report-card"><h3>إجمالي المشتريات</h3><div class="value">${formatMoney(total)}</div></div>`;
-    }
-    else if (type === 'collections') {
-        title = "تقرير التحصيلات";
-        const filtered = receiptsDB.filter(r => new Date(r.date) >= start && new Date(r.date) <= end);
-        cols = ['رقم السند', 'التاريخ', 'العميل', 'طريقة الدفع', 'المبلغ'];
-        data = filtered.map(r => [r.receiptNumber, formatDate(r.date), r.customerName, r.paymentMethod, formatMoney(r.amount)]);
-        const total = filtered.reduce((a,b)=>a+parseFloat(b.amount||0),0);
-        summary = `<div class="report-card"><h3>إجمالي المقبوضات</h3><div class="value">${formatMoney(total)}</div></div>`;
-    }
-    else if (type === 'inventory') {
-        title = "حركة المخزون";
-        cols = ['اسم الصنف', 'الكمية المشتراة', 'الكمية المباعة', 'المخزون النظري'];
-        data = itemsDB.map(item => {
-            const bought = purchasesDB.reduce((acc, pur) => acc + (pur.items || []).filter(i => i.description === item.name).reduce((s, it) => s + parseFloat(it.quantity || 0), 0), 0);
-            const sold = invoicesDB.reduce((acc, inv) => acc + (inv.items || []).filter(i => i.description === item.name).reduce((s, it) => s + parseFloat(it.quantity || 0), 0), 0);
-            return [item.name, bought, sold, (bought - sold)];
-        });
-    }
-    else if (type === 'customerDebts') {
-        title = "مديونية العملاء";
-        cols = ['كود العميل', 'الاسم', 'الهاتف', 'الرصيد المستحق'];
-        data = customersDB.map(c => {
-            const sales = invoicesDB.filter(i => i.customerCode == c.id).reduce((a, b) => a + parseFloat(b.grandTotal || 0), 0);
-            const collected = receiptsDB.filter(r => r.customerCode == c.id).reduce((a, b) => a + parseFloat(b.amount || 0), 0);
-            return [c.id, c.name, c.phone, formatMoney(sales - collected)];
-        }).filter(row => parseFloat(row[3]) !== 0);
-    }
-
-    $('reportTitleDisplay').innerText = title;
-    $('reportDateRangeDisplay').innerText = `${formatDate(start)} - ${formatDate(end)}`;
-    $('reportHeader').style.display = 'block';
-    $('reportSummaryCards').innerHTML = summary;
-    
-    const thead = $('reportTable').querySelector('thead');
-    thead.innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
-    const tbody = $('reportTable').querySelector('tbody');
-    tbody.innerHTML = data.map(row => '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>').join('');
-};
-
-window.printReport = function() { document.body.className = 'printing-report'; window.print(); };
-window.exportExcel = function() {
-    const tbl = document.getElementById('reportTable');
-    if(!tbl || tbl.rows.length === 0) return alert('لا توجد بيانات للتصدير');
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.table_to_sheet(tbl);
-    XLSX.utils.book_append_sheet(wb, ws, "Report");
-    XLSX.writeFile(wb, "Report.xlsx");
-};
-
-// --- PRINTING ---
-window.printInvoice = function(id) {
-    const inv = getInvoice(id); if(!inv) return;
-    setPrintLogo('printLogo');
-    $('previewSellerName').innerText = sellerInfo.name;
-    const sAddr = sellerInfo.address || {};
-    $('previewSellerInfo').innerText = `هاتف: ${sellerInfo.phone} | ضريبي: ${sellerInfo.taxNumber}`;
-    $('previewSellerAddress').innerText = `${sAddr.build||''} ${sAddr.street||''} - ${sAddr.district||''} - ${sAddr.city||''}`;
-    $('previewInvoiceNo').innerText = inv.invoiceNumber;
-    $('previewDate').innerText = formatDate(inv.invoiceDate);
-    const cust = customersDB.find(c=>c.id===inv.customerCode);
-    let clientHtml = `<div class="detail-row"><div class="detail-label">العميل:</div><div>${inv.customerName}</div></div>`;
-    if(cust) {
-        const cAddr = cust.address || {};
-        const addrStr = `${cAddr.build||''} ${cAddr.street||''} - ${cAddr.district||''} - ${cAddr.city||''}`;
-        clientHtml += `<div class="detail-row"><div class="detail-label">الرقم الضريبي:</div><div>${cust.taxNumber}</div></div>`+
-                      `<div class="detail-row"><div class="detail-label">العنوان:</div><div>${addrStr}</div></div>`;
-    }
-    $('previewClient').innerHTML = clientHtml;
-    let rows = `<table class="items-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>`;
-    (inv.items || []).forEach(i => rows += `<tr><td>${i.description}</td><td>${i.quantity}</td><td>${formatMoney(i.price)}</td><td>${formatMoney(i.total)}</td></tr>`);
-    $('previewItems').innerHTML = rows + `</tbody></table>`;
-    $('previewTotals').innerHTML = `<h3>الإجمالي الكلي: ${inv.grandTotal} SAR</h3>`;
-    try {
-        const tlvBase64 = zatcaDataToBase64(sellerInfo.name, sellerInfo.taxNumber, inv.invoiceDate, inv.grandTotal, inv.vatTotal);
-        $('qrContainer').innerHTML=''; 
-        new QRCode($('qrContainer'), {text: tlvBase64, width:120, height:120});
-    } catch(e) { console.error("QR Error", e); }
-    document.body.className = 'printing-invoice';
-    window.print();
-};
-
-window.printPurchase = function(id) {
-    const pur = purchasesDB.find(p=>p.invoiceNumber===id); if(!pur) return;
-    $('purPreviewSellerName').innerText = sellerInfo.name;
-    $('purPreviewNo').innerText = pur.invoiceNumber;
-    $('purPreviewDate').innerText = formatDate(pur.invoiceDate);
-    $('purPreviewSupplier').innerHTML = `<div class="detail-row"><div class="detail-label">المورد:</div><div>${pur.supplierName}</div></div>`;
-    let rows = `<table class="items-table"><thead><tr><th>الصنف</th><th>الكمية</th></tr></thead><tbody>`;
-    (pur.items || []).forEach(i => rows += `<tr><td>${i.description}</td><td>${i.quantity}</td></tr>`);
-    $('purPreviewItems').innerHTML = rows + `</tbody></table>`;
-    $('purPreviewTotals').innerHTML = `<h3>الإجمالي: ${pur.grandTotal} SAR</h3>`;
-    document.body.className = 'printing-purchase';
-    window.print();
-};
-
-window.printReceipt = function(id) {
-    const r = receiptsDB.find(x=>x.receiptNumber===id); if(!r) return;
-    setPrintLogo('printReceiptLogo');
-    $('receiptPreviewSellerName').innerText = sellerInfo.name;
-    $('receiptPreviewSellerInfo').innerText = sellerInfo.phone;
-    $('receiptPreviewNumber').innerText = r.receiptNumber;
-    $('receiptPreviewDate').innerText = formatDate(r.date);
-    $('receiptPreviewCustomer').innerText = r.customerName;
-    $('receiptPreviewAmount').innerText = formatMoney(r.amount);
-    $('receiptPreviewDesc').innerText = r.description;
-    $('receiptPreviewPayment').innerText = r.paymentMethod;
-    document.body.className = 'printing-receipt';
-    window.print();
-};
-
-window.printStatement = function(id, type) {
-    setPrintLogo('printStatementLogo');
-    $('statementSellerName').innerText = sellerInfo.name;
-    let txs = [], name = "";
-    if(type === 'customer') {
-        const c = customersDB.find(x=>x.id===id); if(c) name = c.name;
-        invoicesDB.filter(i=>i.customerCode===id).forEach(i => txs.push({date:i.invoiceDate, desc:`فاتورة ${i.invoiceNumber}`, deb: i.grandTotal, cred: 0}));
-        receiptsDB.filter(r=>r.customerCode===id).forEach(r => txs.push({date:r.date, desc:`سند ${r.receiptNumber}`, deb: 0, cred: r.amount}));
-    } else {
-        const s = suppliersDB.find(x=>x.id===id); if(s) name = s.name;
-        purchasesDB.filter(p=>p.supplierCode===id).forEach(p => txs.push({date:p.invoiceDate, desc:`شراء ${p.invoiceNumber}`, deb: 0, cred: p.grandTotal}));
-    }
-    txs.sort((a,b) => new Date(a.date) - new Date(b.date));
-    $('statementClientInfo').innerHTML = `<strong>الاسم:</strong> ${name}`;
-    let bal = 0, html = '';
-    txs.forEach(t => {
-        bal += (parseFloat(t.deb || 0) - parseFloat(t.cred || 0));
-        html += `<tr><td>${formatDate(t.date)}</td><td>${t.desc}</td><td>${formatMoney(t.deb)}</td><td>${formatMoney(t.cred)}</td><td>${formatMoney(bal)}</td></tr>`;
-    });
-    $('statementTableBody').innerHTML = html;
-    $('statementSummary').innerHTML = `<h3>الرصيد الختامي: ${formatMoney(bal)}</h3>`;
-    document.body.className = 'printing-statement';
-    window.print();
-};
-
-window.editInvoice = function(id) {
-    const inv = getInvoice(id); if(!inv) return;
-    editingInvoiceId = id;
-    $('invoiceNumber').value=inv.invoiceNumber; 
-    $('invoiceDate').value=inv.invoiceDate; 
-    $('customerName').value=inv.customerName;
-    $('customerName').dispatchEvent(new Event('input')); 
-    $('itemsBody').innerHTML='';
-    (inv.items || []).forEach(i=>window.addItem(i.description, i.quantity, i.price));
-    window.calcInvoice();
-    window.switchTab('invoiceTab'); 
-    window.switchSubTab('invoiceTab', 'createInvoice');
-};
-
-window.editCustomer = function(id) {
-    const c = customersDB.find(x=>x.id===id); if(!c) return;
-    $('custCode').value=c.id; $('custName').value=c.name; $('custTaxNumber').value=c.taxNumber; $('custPhone').value=c.phone;
-    const addr = c.address || {};
-    $('custCity').value=addr.city||''; $('custDistrict').value=addr.district||''; $('custStreet').value=addr.street||'';
-    $('custBuild').value=addr.build||''; $('custZip').value=addr.zip||''; $('custAddNo').value=addr.addNo||'';
-    window.switchTab('customersTab');
-};
-
-window.editSupplier = function(id) {
-    const s = suppliersDB.find(x=>x.id===id); if(!s) return;
-    $('supCode').value=s.id; $('supName').value=s.name; $('supTaxNumber').value=s.taxNumber; $('supPhone').value=s.phone;
-    const addr = s.address || {};
-    $('supCity').value=addr.city||''; $('supDistrict').value=addr.district||''; $('supStreet').value=addr.street||'';
-    $('supBuild').value=addr.build||''; $('supZip').value=addr.zip||''; $('supAddNo').value=addr.addNo||'';
-    window.switchTab('suppliersTab');
-};
-
-window.editItem = function(idx) { 
-    editingItemId=idx; 
-    $('itemName').value=itemsDB[idx].name; 
-    $('itemPrice').value=itemsDB[idx].price; 
-    window.switchTab('itemsTab'); 
-};
-    
-window.deleteItem = function(idx) { 
-    if(confirm('حذف؟')) { itemsDB.splice(idx,1); saveAllData(); renderAllLogs(); } 
-};
-
-window.editReceipt = function(id) {
-    const r = receiptsDB.find(x=>x.receiptNumber===id); if(!r) return;
-    editingReceiptId = id;
-    $('receiptNumber').value=r.receiptNumber; $('receiptDate').value=r.date;
-    $('receiptCustomerName').value=r.customerName; $('amountReceived').value=r.amount; 
-    $('paymentMethod').value=r.paymentMethod; $('receiptDescription').value=r.description;
-    window.switchTab('receiptTab');
-};
+    if(!s.name) return;
+    const idx = db.suppliers.findIndex(x => x.name === s.name);
+    if(idx >= 0) db.suppliers[idx] = s; else db.suppliers.push(s);
+    saveData();
+    document.getElementById('supName').value='';
+}
 
 // --- Settings ---
-window.previewLogo = function(e) {
-    const file = e.target.files[0]; if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) { sellerInfo.logo = evt.target.result; if($('logoPreview')) $('logoPreview').src = sellerInfo.logo; };
-    reader.readAsDataURL(file);
-};
-window.saveSettings = function() {
-    sellerInfo.name = $('settingSellerName').value;
-    sellerInfo.taxNumber = $('settingSellerTaxNum').value;
-    sellerInfo.phone = $('settingSellerPhone').value;
-    sellerInfo.address = { city: $('setCity').value, district: $('setDistrict').value, street: $('setStreet').value, build: $('setBuild').value, zip: $('setZip').value, addNo: $('setAddNo').value };
-    saveAllData(); alert('تم الحفظ');
-};
-window.exportBackup = function() {
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoicesDB), "Sales");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchasesDB), "Purchases");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(customersDB), "Customers");
-    XLSX.writeFile(wb, "Backup.xlsx");
-};
-window.importBackup = function(e) {
-    const file = e.target.files[0]; if(!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const s2j = (n) => workbook.Sheets[n] ? XLSX.utils.sheet_to_json(workbook.Sheets[n]) : [];
-            invoicesDB = s2j("Sales"); purchasesDB = s2j("Purchases"); customersDB = s2j("Customers");
-            saveAllData(); alert('تم الاستعادة'); window.location.reload();
-        } catch(err) { alert('خطأ في الملف'); }
+function saveSettings() {
+    db.settings = {
+        name: document.getElementById('setCoName').value,
+        tax: document.getElementById('setTax').value,
+        phone: document.getElementById('setPhone').value,
+        logo: document.getElementById('setLogoPreview').src,
+        addr: {
+            city: document.getElementById('setCity').value,
+            dist: document.getElementById('setDist').value,
+            st: document.getElementById('setSt').value,
+            build: document.getElementById('setBuild').value,
+            zip: document.getElementById('setZip').value,
+            add: document.getElementById('setAdd').value
+        }
     };
-    reader.readAsArrayBuffer(file);
-};
-window.clearAllData = function() { if(confirm('حذف الكل؟')) { localStorage.removeItem(`accData_${sessionStorage.getItem('loggedInUser')}`); window.location.reload(); } };
-
-// Internal Helpers
-function saveAllData() {
-    const data = { invoicesDB, receiptsDB, itemsDB, customersDB, suppliersDB, purchasesDB, sellerInfo };
-    localStorage.setItem(`accData_${sessionStorage.getItem('loggedInUser')}`, JSON.stringify(data));
+    saveData();
 }
-function loadAllData() {
-    try {
-        const raw = localStorage.getItem(`accData_${sessionStorage.getItem('loggedInUser')}`);
-        if (raw) {
-            const d = JSON.parse(raw);
-            invoicesDB = d.invoicesDB || []; receiptsDB = d.receiptsDB || []; itemsDB = d.itemsDB || [];
-            customersDB = d.customersDB || []; suppliersDB = d.suppliersDB || []; purchasesDB = d.purchasesDB || [];
-            sellerInfo = { ...defaultSellerInfo, ...d.sellerInfo };
-        } else { sellerInfo = defaultSellerInfo; }
-        if(sellerInfo.logo && $('logoPreview')) $('logoPreview').src = sellerInfo.logo;
-    } catch(e) { console.error("Load Error", e); }
-}
-
-function getNextNumber(db, prefix) {
-    if (!db || db.length === 0) return `${prefix}-001`;
-    const last = db[db.length-1];
-    let numStr = prefix === "INV" ? last.invoiceNumber : (prefix === "REC" ? last.receiptNumber : last.invoiceNumber);
-    const matches = numStr.match(/\d+$/);
-    if(matches) {
-        const nextVal = parseInt(matches[0]) + 1;
-        return numStr.replace(/\d+$/, String(nextVal).padStart(matches[0].length, '0'));
+function loadLogo(inp) {
+    const f = inp.files[0];
+    if(f) {
+        const r = new FileReader();
+        r.onload = e => document.getElementById('setLogoPreview').src = e.target.result;
+        r.readAsDataURL(f);
     }
-    return `${prefix}-${Date.now()}`;
+}
+function wipeData() {
+    if(confirm('حذف نهائي؟')) { localStorage.removeItem('myAppData_'+user); location.reload(); }
 }
 
-function setPrintLogo(imgId) {
-    const img = $(imgId);
-    if(sellerInfo.logo) { img.src = sellerInfo.logo; img.style.display = 'block'; } else { img.style.display = 'none'; }
-}
+// --- Reports ---
+function runReport() {
+    const type = document.getElementById('repType').value;
+    const d1 = new Date(document.getElementById('repStart').value);
+    const d2 = new Date(document.getElementById('repEnd').value);
+    const th = document.querySelector('#tblReport thead');
+    const tb = document.querySelector('#tblReport tbody');
+    tb.innerHTML = '';
+    let total = 0;
 
-function populateDatalists() {
-    const custDL = $('customersDatalist'); custDL.innerHTML = '';
-    customersDB.forEach(c => custDL.innerHTML += `<option value="${c.name}" data-code="${c.id}">`);
-    const supDL = $('suppliersDatalist'); supDL.innerHTML = '';
-    suppliersDB.forEach(s => supDL.innerHTML += `<option value="${s.name}" data-code="${s.id}">`);
-    const itemDL = $('itemsDatalist'); itemDL.innerHTML = '';
-    itemsDB.forEach(i => itemDL.innerHTML += `<option value="${i.name}" data-price="${i.price}">`);
-}
-
-function renderAllLogs() {
-    // Invoice Log
-    $('invoiceLogBody').innerHTML = invoicesDB.slice().reverse().map(inv => 
-        `<tr><td>${inv.invoiceNumber}</td><td>${formatDate(inv.invoiceDate)}</td><td>${inv.customerName}</td><td>${inv.grandTotal}</td>
-        <td class="actions"><button class="btn warning small-action" onclick="editInvoice('${inv.invoiceNumber}')">تعديل</button><button class="btn secondary small-action" onclick="printInvoice('${inv.invoiceNumber}')">طباعة</button></td></tr>`
-    ).join('');
-    
-    // Receipt Log
-    $('receiptLogBody').innerHTML = receiptsDB.slice().reverse().map(r => 
-        `<tr><td>${r.receiptNumber}</td><td>${formatDate(r.date)}</td><td>${r.customerName}</td><td>${formatMoney(r.amount)}</td>
-        <td class="actions"><button class="btn warning small-action" onclick="editReceipt('${r.receiptNumber}')">تعديل</button><button class="btn secondary small-action" onclick="printReceipt('${r.receiptNumber}')">طباعة</button></td></tr>`
-    ).join('');
-    
-    // Items Log
-    $('itemsLogBody').innerHTML = itemsDB.map((item, idx) => {
-        const sold = invoicesDB.reduce((acc, inv) => acc + (inv.items || []).filter(i => i.description === item.name).reduce((s, it) => s + parseFloat(it.quantity || 0), 0), 0);
-        return `<tr><td>${item.name}</td><td>${item.price}</td><td>${sold}</td>
-        <td class="actions"><button class="btn warning small-action" onclick="editItem(${idx})">تعديل</button><button class="btn danger small-action" onclick="deleteItem(${idx})">حذف</button></td></tr>`;
-    }).join('');
-
-    // Customers Log
-    $('customersLogBody').innerHTML = customersDB.map(c => {
-        const sales = invoicesDB.filter(i => i.customerCode == c.id).reduce((a, b) => a + parseFloat(b.grandTotal || 0), 0);
-        const collected = receiptsDB.filter(r => r.customerCode == c.id).reduce((a, b) => a + parseFloat(b.amount || 0), 0);
-        return `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.phone}</td><td>${formatMoney(sales - collected)}</td>
-        <td class="actions"><button class="btn warning small-action" onclick="editCustomer('${c.id}')">تعديل</button><button class="btn info small-action" onclick="printStatement('${c.id}', 'customer')">كشف</button></td></tr>`;
-    }).join('');
-    
-    // Suppliers Log
-    $('suppliersLogBody').innerHTML = suppliersDB.map(s => {
-        const bought = purchasesDB.filter(p => p.supplierCode == s.id).reduce((a, b) => a + parseFloat(b.grandTotal || 0), 0);
-        return `<tr><td>${s.id}</td><td>${s.name}</td><td>${s.phone}</td><td>${formatMoney(bought)}</td>
-        <td class="actions"><button class="btn warning small-action" onclick="editSupplier('${s.id}')">تعديل</button><button class="btn info small-action" onclick="printStatement('${s.id}', 'supplier')">كشف</button></td></tr>`;
-    }).join('');
-    
-    // Purchases Log
-    $('purchaseLogBody').innerHTML = purchasesDB.slice().reverse().map(p => 
-        `<tr><td>${p.invoiceNumber}</td><td>${formatDate(p.invoiceDate)}</td><td>${p.supplierName}</td><td>${p.grandTotal}</td>
-        <td class="actions"><button class="btn secondary small-action" onclick="printPurchase('${p.invoiceNumber}')">طباعة</button></td></tr>`
-    ).join('');
-
-    populateDatalists();
-}
-
-// --- Init Run ---
-document.addEventListener('DOMContentLoaded', () => {
-    
-    // NO AUTO REDIRECT HERE TO STOP LOOPS
-    // Instead, we check and show block if needed
-    if(!sessionStorage.getItem('loggedInUser')) { 
-        document.getElementById('loginBlocker').style.display = 'block';
-        return; 
+    if(type === 'sales') {
+        th.innerHTML = '<tr><th>التاريخ</th><th>الفاتورة</th><th>العميل</th><th>المبلغ</th></tr>';
+        document.getElementById('repTitle').innerText = "تقرير المبيعات";
+        db.invoices.forEach(i => {
+            if(new Date(i.date) >= d1 && new Date(i.date) <= d2) {
+                tb.innerHTML += `<tr><td>${i.date.slice(0,10)}</td><td>${i.num}</td><td>${i.cust}</td><td>${i.grand}</td></tr>`;
+                total += parseFloat(i.grand);
+            }
+        });
+    } else if (type === 'inventory') {
+        th.innerHTML = '<tr><th>الصنف</th><th>وارد (شراء)</th><th>صادر (بيع)</th><th>رصيد</th></tr>';
+        document.getElementById('repTitle').innerText = "حركة المخزون";
+        db.items.forEach(it => {
+            let bought = 0, sold = 0;
+            db.purchases.forEach(p => p.items.forEach(pi => { if(pi.name===it.name) bought += parseFloat(pi.qty); }));
+            db.invoices.forEach(i => i.items.forEach(ii => { if(ii.name===it.name) sold += parseFloat(ii.qty); }));
+            tb.innerHTML += `<tr><td>${it.name}</td><td>${bought}</td><td>${sold}</td><td>${bought-sold}</td></tr>`;
+        });
+    } else if (type === 'debts') {
+        th.innerHTML = '<tr><th>العميل</th><th>مبيعات</th><th>تحصيل</th><th>رصيد مستحق</th></tr>';
+        db.customers.forEach(c => {
+            const sold = db.invoices.filter(x => x.cust === c.name).reduce((a,b)=>a+parseFloat(b.grand),0);
+            const paid = db.receipts.filter(x => x.cust === c.name).reduce((a,b)=>a+parseFloat(b.amount),0);
+            if(sold - paid !== 0) {
+                tb.innerHTML += `<tr><td>${c.name}</td><td>${sold}</td><td>${paid}</td><td>${(sold-paid).toFixed(2)}</td></tr>`;
+            }
+        });
     }
-    
-    $('welcomeUser').innerText = `مرحباً ${sessionStorage.getItem('loggedInUser')}`;
-    loadAllData();
-    
-    // Fill Settings Fields
-    $('settingSellerName').value = sellerInfo.name || '';
-    $('settingSellerTaxNum').value = sellerInfo.taxNumber || '';
-    $('settingSellerPhone').value = sellerInfo.phone || '';
-    const sAddr = sellerInfo.address || {};
-    $('setCity').value=sAddr.city||''; $('setDistrict').value=sAddr.district||''; $('setStreet').value=sAddr.street||'';
-    $('setBuild').value=sAddr.build||''; $('setZip').value=sAddr.zip||''; $('setAddNo').value=sAddr.addNo||'';
+    // Add Summary Card
+    document.getElementById('repCards').innerHTML = `<div class="r-card">الإجمالي<div class="r-val">${total.toFixed(2)}</div></div>`;
+}
 
-    window.resetInvoiceForm();
-    window.resetPurchaseForm();
-    window.resetReceiptForm();
-    renderAllLogs();
+// --- Printing ---
+function printInvoice(idx) {
+    const inv = db.invoices[idx];
+    prepPrintHeader('pInv');
+    document.getElementById('pInvNum').innerText = inv.num;
+    document.getElementById('pInvDate').innerText = inv.date;
+    document.getElementById('pInvCust').innerText = "العميل: " + inv.cust;
     
-    window.onafterprint = () => document.body.className = '';
-});
+    // Items
+    const tb = document.querySelector('#pInvTable tbody'); tb.innerHTML='';
+    inv.items.forEach(i => {
+        tb.innerHTML += `<tr><td>${i.name}</td><td>${i.qty}</td><td>${i.price}</td><td>${i.total}</td></tr>`;
+    });
+    document.getElementById('pInvGrand').innerText = inv.grand;
+    
+    // QR
+    const tlv = `Seller:${db.settings.name}|Tax:${db.settings.tax}|Date:${inv.date}|Total:${inv.grand}|VAT:${inv.vat}`;
+    document.getElementById('pInvQR').innerHTML = '';
+    new QRCode(document.getElementById('pInvQR'), { text:tlv, width:100, height:100 });
+
+    doPrint('printInvoiceDiv');
+}
+
+function printReceipt(idx) {
+    const r = db.receipts[idx];
+    prepPrintHeader('pRec');
+    document.getElementById('pRecNum').innerText = r.num;
+    document.getElementById('pRecDate').innerText = r.date;
+    document.getElementById('pRecCust').innerText = r.cust;
+    document.getElementById('pRecAmount').innerText = r.amount;
+    document.getElementById('pRecNote').innerText = r.note;
+    document.getElementById('pRecType').innerText = r.type;
+    doPrint('printReceiptDiv');
+}
+
+function printReportDiv() {
+    prepPrintHeader('pRep');
+    document.getElementById('pRepTitle').innerText = document.getElementById('repTitle').innerText;
+    document.getElementById('pRepContent').innerHTML = document.getElementById('reportOutput').innerHTML;
+    doPrint('printReportDiv');
+}
+
+// Print Helpers
+function prepPrintHeader(pfx) {
+    const s = db.settings;
+    document.getElementById(pfx+'Co').innerText = s.name;
+    document.getElementById(pfx+'CoDet').innerText = `ضريبي: ${s.tax} | هاتف: ${s.phone}`;
+    if(s.logo) document.getElementById(pfx+'Logo').src = s.logo;
+    if(document.getElementById(pfx+'Addr') && s.addr) {
+        document.getElementById(pfx+'Addr').innerText = `${s.addr.city} - ${s.addr.dist} - ${s.addr.st}`;
+    }
+}
+
+function doPrint(divId) {
+    document.querySelectorAll('.print-area').forEach(d => d.classList.remove('print-area-active'));
+    document.getElementById(divId).classList.add('print-area-active');
+    window.print();
+}
+
+// --- Utils ---
+function getNextNum(type) {
+    // Simple logic: count + 1
+    if(type==='INV') return 'INV-' + (db.invoices.length + 1001);
+    if(type==='REC') return 'REC-' + (db.receipts.length + 1001);
+}
+
+function renderTable(id, data, cols, hasControls, printFnName) {
+    const tb = document.querySelector('#'+id+' tbody');
+    tb.innerHTML = '';
+    data.forEach((row, i) => {
+        let h = '<tr>';
+        cols.forEach(k => {
+            let val = row[k];
+            // Calc specific columns
+            if(k==='sold') {
+                let sold=0; db.invoices.forEach(inv=>inv.items.forEach(x=>{if(x.name===row.name) sold+=parseFloat(x.qty)})); val=sold;
+            }
+            if(k==='balance') {
+                const s = db.invoices.filter(x => x.cust === row.name).reduce((a,b)=>a+parseFloat(b.grand),0);
+                const p = db.receipts.filter(x => x.cust === row.name).reduce((a,b)=>a+parseFloat(b.amount),0);
+                val = (s-p).toFixed(2);
+            }
+            h += `<td>${val}</td>`;
+        });
+        
+        if(hasControls) {
+            h += `<td>`;
+            if(printFnName) h += `<button class="btn secondary" onclick="${printFnName}(${i})">طباعة</button> `;
+            h += `<button class="btn danger" onclick="deleteRow('${id}', ${i})">حذف</button></td>`;
+        }
+        h += '</tr>';
+        tb.innerHTML += h;
+    });
+}
+
+function deleteRow(tblId, idx) {
+    if(!confirm('حذف؟')) return;
+    if(tblId==='tblInvoices') db.invoices.splice(idx,1);
+    if(tblId==='tblPurchases') db.purchases.splice(idx,1);
+    if(tblId==='tblReceipts') db.receipts.splice(idx,1);
+    if(tblId==='tblItems') db.items.splice(idx,1);
+    if(tblId==='tblCustomers') db.customers.splice(idx,1);
+    if(tblId==='tblSuppliers') db.suppliers.splice(idx,1);
+    saveData();
+}
