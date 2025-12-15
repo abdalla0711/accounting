@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { username: 'user7', password: 'p7' },
         { username: 'user8', password: 'p8' },
         { username: 'user9', password: 'p9' },
-        { username: 'amro', password: 'Am#599695929' }
+        { username: 'amro', password: 'Am599695929' }
     ];
 
     const loginForm = document.getElementById('loginForm');
