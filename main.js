@@ -8,10 +8,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- State & DB ---
     let invoicesDB = [], receiptsDB = [], itemsDB = [], customersDB = [], suppliersDB = [], purchasesDB = [], sellerInfo = {};
-    let currentLang = 'ar';
-    let editingInvoiceId = null, editingReceiptId = null, editingItemId = null, editingCustomerId = null, editingSupplierId = null;
-
-    const defaultSellerInfo = { name: "اسم الشركة", taxNumber: "", address: "", phone: "", logo: "" };
+    let editingInvoiceId = null, editingReceiptId = null, editingItemId = null;
+    
+    const defaultSellerInfo = { 
+        name: "اسم الشركة", taxNumber: "", phone: "", logo: "", 
+        address: { city:"", district:"", street:"", build:"", zip:"", addNo:"" } 
+    };
 
     // Helpers
     const $ = id => document.getElementById(id);
@@ -19,6 +21,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
     const formatMoney = (n) => parseFloat(n || 0).toFixed(2);
     
+    // Auto Number Logic
+    function getNextNumber(db, prefix) {
+        if(db.length === 0) return `${prefix}-001`;
+        const last = db[db.length-1];
+        let numStr = "";
+        if(prefix === "INV") numStr = last.invoiceNumber;
+        else if(prefix === "PUR") numStr = last.invoiceNumber;
+        else if(prefix === "REC") numStr = last.receiptNumber;
+        
+        // Try extract number
+        const matches = numStr.match(/\d+$/);
+        if(matches) {
+            const nextVal = parseInt(matches[0]) + 1;
+            return numStr.replace(/\d+$/, String(nextVal).padStart(matches[0].length, '0'));
+        }
+        return `${prefix}-${Date.now()}`;
+    }
+
     // --- Local Storage ---
     function saveAllData() {
         const data = { invoicesDB, receiptsDB, itemsDB, customersDB, suppliersDB, purchasesDB, sellerInfo };
@@ -36,28 +56,13 @@ document.addEventListener('DOMContentLoaded', function() {
             suppliersDB = d.suppliersDB || [];
             purchasesDB = d.purchasesDB || [];
             sellerInfo = d.sellerInfo || defaultSellerInfo;
+            // Ensure address object exists if loaded from old data
+            if(typeof sellerInfo.address !== 'object') sellerInfo.address = { city:"", district:"", street:"", build:"", zip:"", addNo:"" };
         } else {
             sellerInfo = defaultSellerInfo;
         }
         if(sellerInfo.logo) $('logoPreview').src = sellerInfo.logo;
     }
-
-    // --- Core Logic functions ---
-    
-    // Calculations
-    const getCustomerBalance = (id) => {
-        const sales = invoicesDB.filter(i => i.customerCode == id).reduce((a, b) => a + parseFloat(b.grandTotal), 0);
-        const collected = receiptsDB.filter(r => r.customerCode == id).reduce((a, b) => a + parseFloat(b.amount), 0);
-        return formatMoney(sales - collected);
-    };
-    const getSupplierBalance = (id) => {
-        const bought = purchasesDB.filter(p => p.supplierCode == id).reduce((a, b) => a + parseFloat(b.grandTotal), 0);
-        // Assuming no "Payment to Supplier" module yet, balance is total purchases. 
-        // Real app would need Payment Vouchers.
-        return formatMoney(bought);
-    };
-    const getItemSoldQty = (name) => invoicesDB.reduce((acc, inv) => acc + inv.items.filter(i => i.description === name).reduce((s, it) => s + parseFloat(it.quantity), 0), 0);
-    const getItemPurchasedQty = (name) => purchasesDB.reduce((acc, pur) => acc + pur.items.filter(i => i.description === name).reduce((s, it) => s + parseFloat(it.quantity), 0), 0);
 
     // --- DOM Renderers ---
 
@@ -82,16 +87,17 @@ document.addEventListener('DOMContentLoaded', function() {
         itemsDB.forEach(i => itemDL.innerHTML += `<option value="${i.name}" data-price="${i.price}">`);
     }
 
-    // 1. Invoices
+    // 1. Invoices Log
     function renderInvoiceLog() {
         const tbody = $('invoiceLogBody'); tbody.innerHTML = '';
         invoicesDB.slice().reverse().forEach(inv => {
+            // NOTE: Passed ID as string in single quotes
             tbody.innerHTML += `<tr><td>${inv.invoiceNumber}</td><td>${formatDate(inv.invoiceDate)}</td><td>${inv.customerName}</td><td>${inv.grandTotal}</td>
             <td class="actions"><button class="btn warning small-action" onclick="editInvoice('${inv.invoiceNumber}')">تعديل</button><button class="btn secondary small-action" onclick="printInvoice('${inv.invoiceNumber}')">طباعة</button></td></tr>`;
         });
     }
 
-    // 2. Receipts
+    // 2. Receipts Log
     function renderReceiptLog() {
         const tbody = $('receiptLogBody'); tbody.innerHTML = '';
         receiptsDB.slice().reverse().forEach(r => {
@@ -100,16 +106,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 3. Items
+    // 3. Items Log
     function renderItemsLog() {
         const tbody = $('itemsLogBody'); tbody.innerHTML = '';
         itemsDB.forEach((item, idx) => {
-            tbody.innerHTML += `<tr><td>${item.name}</td><td>${item.price}</td><td>${getItemSoldQty(item.name)}</td>
+            const sold = getItemSoldQty(item.name);
+            tbody.innerHTML += `<tr><td>${item.name}</td><td>${item.price}</td><td>${sold}</td>
             <td class="actions"><button class="btn warning small-action" onclick="editItem(${idx})">تعديل</button><button class="btn danger small-action" onclick="deleteItem(${idx})">حذف</button></td></tr>`;
         });
     }
 
-    // 4. Customers
+    // 4. Customers Log
     function renderCustomersLog() {
         const tbody = $('customersLogBody'); tbody.innerHTML = '';
         customersDB.forEach(c => {
@@ -118,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 5. Suppliers
+    // 5. Suppliers Log
     function renderSuppliersLog() {
         const tbody = $('suppliersLogBody'); tbody.innerHTML = '';
         suppliersDB.forEach(s => {
@@ -127,19 +134,66 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 6. Purchases
+    // 6. Purchases Log
     function renderPurchaseLog() {
         const tbody = $('purchaseLogBody'); tbody.innerHTML = '';
         purchasesDB.slice().reverse().forEach(p => {
             tbody.innerHTML += `<tr><td>${p.invoiceNumber}</td><td>${formatDate(p.invoiceDate)}</td><td>${p.supplierName}</td><td>${p.grandTotal}</td>
-            <td class="actions"><button class="btn warning small-action" onclick="alert('التعديل غير متاح حاليا للحفاظ على دقة المخزون')">عرض</button></td></tr>`;
+            <td class="actions"><button class="btn secondary small-action" onclick="printPurchase('${p.invoiceNumber}')">طباعة</button></td></tr>`;
         });
     }
 
+    // --- Calculation Helpers ---
+    const getCustomerBalance = (id) => {
+        const sales = invoicesDB.filter(i => i.customerCode == id).reduce((a, b) => a + parseFloat(b.grandTotal), 0);
+        const collected = receiptsDB.filter(r => r.customerCode == id).reduce((a, b) => a + parseFloat(b.amount), 0);
+        return formatMoney(sales - collected);
+    };
+    const getSupplierBalance = (id) => {
+        const bought = purchasesDB.filter(p => p.supplierCode == id).reduce((a, b) => a + parseFloat(b.grandTotal), 0);
+        return formatMoney(bought);
+    };
+    const getItemSoldQty = (name) => invoicesDB.reduce((acc, inv) => acc + inv.items.filter(i => i.description === name).reduce((s, it) => s + parseFloat(it.quantity), 0), 0);
 
-    // --- Actions & Saves ---
 
-    // Invoice Logic
+    // --- Actions: Invoice ---
+    
+    // Show Debt Details when selecting customer
+    $('customerName').addEventListener('input', function() {
+        const val = this.value;
+        const opt = Array.from($('customersDatalist').options).find(o => o.value === val);
+        const box = $('customerDebtDetails');
+        
+        if (opt) {
+            const code = opt.dataset.code;
+            const cust = customersDB.find(c => c.id === code);
+            $('customerTaxNumber').value = cust ? cust.taxNumber : '';
+            
+            // Calc details
+            const totalDebt = getCustomerBalance(code);
+            const lastInvoices = invoicesDB.filter(i => i.customerCode == code).slice(-5).reverse();
+            
+            let html = `<h4>ملخص حساب العميل: ${val}</h4>`;
+            html += `<div><strong>الرصيد الحالي المستحق: ${totalDebt} SAR</strong></div>`;
+            html += `<div style="margin-top:5px; border-top:1px dashed #ccc; padding-top:5px">آخر الفواتير:</div>`;
+            if(lastInvoices.length > 0) {
+                html += `<ul style="margin:5px 0; padding-right:20px; list-style:circle;">`;
+                lastInvoices.forEach(inv => {
+                    html += `<li>${inv.invoiceNumber} (${formatDate(inv.invoiceDate)}) - المبلغ: ${inv.grandTotal}</li>`;
+                });
+                html += `</ul>`;
+            } else {
+                html += `<div class="small">لا توجد فواتير سابقة</div>`;
+            }
+            
+            box.innerHTML = html;
+            box.style.display = 'block';
+        } else {
+            $('customerTaxNumber').value = '';
+            box.style.display = 'none';
+        }
+    });
+
     window.addItem = (desc='', qty=1, price=0) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><input class="itm-desc" value="${desc}" list="itemsDatalist"></td><td><input class="itm-qty" type="number" value="${qty}"></td><td><input class="itm-price" type="number" value="${price}"></td><td class="itm-total">0.00</td><td><button class="btn danger small-action" onclick="this.closest('tr').remove();calcInvoice();">x</button></td>`;
@@ -166,14 +220,32 @@ document.addEventListener('DOMContentLoaded', function() {
         $('vatTotal').innerText = formatMoney(vat);
         $('grandTotal').innerText = formatMoney(sub + vat);
     }
-    $('newInvoiceBtn').onclick = () => { editingInvoiceId=null; $('invoiceNumber').value=''; $('invoiceDate').value=toLocalISO(new Date()); $('itemsBody').innerHTML=''; addItem(); calcInvoice(); };
+    
+    $('newInvoiceBtn').onclick = () => { 
+        editingInvoiceId=null; 
+        $('invoiceNumber').value=''; 
+        $('invoiceDate').value=toLocalISO(new Date()); 
+        $('itemsBody').innerHTML=''; 
+        $('customerName').value='';
+        $('customerTaxNumber').value='';
+        $('customerDebtDetails').style.display='none';
+        
+        // Suggest Next Number
+        const nextNum = getNextNumber(invoicesDB, 'INV');
+        $('invoiceNumHint').innerText = `مقترح: ${nextNum}`;
+        $('invoiceNumber').value = nextNum; // Pre-fill
+
+        addItem(); 
+        calcInvoice(); 
+    };
+
     $('generateBtn').onclick = () => {
         const custName = $('customerName').value;
         const custOpt = Array.from($('customersDatalist').options).find(o=>o.value===custName);
         if(!custOpt) return alert('اختر عميلاً صحيحاً');
         
         const data = {
-            invoiceNumber: $('invoiceNumber').value || `INV-${Date.now()}`,
+            invoiceNumber: $('invoiceNumber').value,
             invoiceDate: $('invoiceDate').value,
             customerCode: custOpt.dataset.code, customerName: custName,
             subTotal: $('subTotal').innerText, vatTotal: $('vatTotal').innerText, grandTotal: $('grandTotal').innerText,
@@ -187,10 +259,12 @@ document.addEventListener('DOMContentLoaded', function() {
             invoicesDB[idx] = data;
         } else { invoicesDB.push(data); }
         
-        saveAllData(); renderAllLogs(); $('newInvoiceBtn').click();
+        saveAllData(); renderAllLogs(); 
+        alert("تم الحفظ بنجاح");
+        $('newInvoiceBtn').click();
     };
 
-    // Purchase Logic
+    // --- Actions: Purchase ---
     window.addPurchaseItem = () => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><input class="p-desc" list="itemsDatalist"></td><td><input class="p-qty" type="number" value="1"></td><td><input class="p-cost" type="number" value="0"></td><td class="p-total">0.00</td><td><button class="btn danger small-action" onclick="this.closest('tr').remove();calcPurchase();">x</button></td>`;
@@ -212,7 +286,13 @@ document.addEventListener('DOMContentLoaded', function() {
         $('purchaseGrandTotal').innerText = formatMoney(sub + vat);
     }
     $('addPurchaseItemBtn').onclick = addPurchaseItem;
-    $('newPurchaseBtn').onclick = () => { $('purchaseNumber').value=''; $('purchaseDate').value=toLocalISO(new Date()); $('purchaseItemsBody').innerHTML=''; addPurchaseItem(); };
+    $('newPurchaseBtn').onclick = () => { 
+        $('purchaseNumber').value=''; 
+        $('purchaseDate').value=toLocalISO(new Date()); 
+        $('purchaseItemsBody').innerHTML=''; 
+        $('supplierName').value='';
+        addPurchaseItem(); 
+    };
     $('savePurchaseBtn').onclick = () => {
         const supName = $('supplierName').value;
         const supOpt = Array.from($('suppliersDatalist').options).find(o=>o.value===supName);
@@ -224,33 +304,51 @@ document.addEventListener('DOMContentLoaded', function() {
             supplierCode: supOpt.dataset.code, supplierName: supName,
             grandTotal: $('purchaseGrandTotal').innerText,
             items: Array.from(document.querySelectorAll('#purchaseItemsBody tr')).map(r => ({
-                description: r.querySelector('.p-desc').value, quantity: r.querySelector('.p-qty').value
+                description: r.querySelector('.p-desc').value, quantity: r.querySelector('.p-qty').value, cost: r.querySelector('.p-cost').value
             }))
         };
         purchasesDB.push(data);
-        saveAllData(); renderAllLogs(); $('newPurchaseBtn').click();
+        saveAllData(); renderAllLogs(); alert("تم حفظ الشراء"); $('newPurchaseBtn').click();
     };
 
-    // Customer/Supplier Logic
+    // --- Actions: Customer/Supplier (With Address) ---
     $('saveCustomerBtn').onclick = () => {
-        const data = { id: $('custCode').value, name: $('custName').value, taxNumber: $('custTaxNumber').value, phone: $('custPhone').value, address: $('custAddress').value };
+        const data = { 
+            id: $('custCode').value, name: $('custName').value, taxNumber: $('custTaxNumber').value, phone: $('custPhone').value,
+            address: {
+                city: $('custCity').value, district: $('custDistrict').value, street: $('custStreet').value,
+                build: $('custBuild').value, zip: $('custZip').value, addNo: $('custAddNo').value
+            }
+        };
         if(!data.id || !data.name) return alert('الكود والاسم مطلوبان');
         const idx = customersDB.findIndex(c=>c.id===data.id);
         if(idx > -1) customersDB[idx] = data; else customersDB.push(data);
         saveAllData(); renderAllLogs(); $('clearCustomerFormBtn').click();
     };
-    $('clearCustomerFormBtn').onclick = () => { $('custCode').value=''; $('custName').value=''; $('custTaxNumber').value=''; $('custPhone').value=''; $('custAddress').value=''; };
+    $('clearCustomerFormBtn').onclick = () => { 
+        $('custCode').value=''; $('custName').value=''; $('custTaxNumber').value=''; $('custPhone').value=''; 
+        ['custCity','custDistrict','custStreet','custBuild','custZip','custAddNo'].forEach(id=>$(id).value='');
+    };
 
     $('saveSupplierBtn').onclick = () => {
-        const data = { id: $('supCode').value, name: $('supName').value, taxNumber: $('supTaxNumber').value, phone: $('supPhone').value };
+        const data = { 
+            id: $('supCode').value, name: $('supName').value, taxNumber: $('supTaxNumber').value, phone: $('supPhone').value,
+            address: {
+                city: $('supCity').value, district: $('supDistrict').value, street: $('supStreet').value,
+                build: $('supBuild').value, zip: $('supZip').value, addNo: $('supAddNo').value
+            }
+        };
         if(!data.id || !data.name) return alert('الكود والاسم مطلوبان');
         const idx = suppliersDB.findIndex(s=>s.id===data.id);
         if(idx > -1) suppliersDB[idx] = data; else suppliersDB.push(data);
         saveAllData(); renderAllLogs(); $('clearSupplierFormBtn').click();
     };
-    $('clearSupplierFormBtn').onclick = () => { $('supCode').value=''; $('supName').value=''; $('supTaxNumber').value=''; $('supPhone').value=''; };
+    $('clearSupplierFormBtn').onclick = () => { 
+        $('supCode').value=''; $('supName').value=''; $('supTaxNumber').value=''; $('supPhone').value=''; 
+        ['supCity','supDistrict','supStreet','supBuild','supZip','supAddNo'].forEach(id=>$(id).value='');
+    };
 
-    // Item Logic
+    // --- Actions: Items & Receipts ---
     $('saveItemBtn').onclick = () => {
         const name = $('itemName').value; const price = $('itemPrice').value;
         if(!name) return;
@@ -259,28 +357,34 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     $('clearItemFormBtn').onclick = () => { editingItemId=null; $('itemName').value=''; $('itemPrice').value=''; };
 
-    // Receipt Logic
     $('saveReceiptBtn').onclick = () => {
         const custName = $('receiptCustomerName').value;
         const custOpt = Array.from($('customersDatalist').options).find(o=>o.value===custName);
         if(!custOpt) return alert('اختر عميلاً');
         const data = {
-            receiptNumber: $('receiptNumber').value || `REC-${Date.now()}`, date: $('receiptDate').value,
+            receiptNumber: $('receiptNumber').value, date: $('receiptDate').value,
             customerCode: custOpt.dataset.code, customerName: custName,
             amount: $('amountReceived').value, paymentMethod: $('paymentMethod').value, description: $('receiptDescription').value
         };
         if(editingReceiptId) receiptsDB[receiptsDB.findIndex(r=>r.receiptNumber===editingReceiptId)] = data; else receiptsDB.push(data);
-        saveAllData(); renderAllLogs(); $('newReceiptBtn').click();
+        saveAllData(); renderAllLogs(); alert("تم حفظ السند"); $('newReceiptBtn').click();
     };
-    $('newReceiptBtn').onclick = () => { editingReceiptId=null; $('receiptNumber').value=''; $('receiptDate').value=toLocalISO(new Date()); $('amountReceived').value=''; $('receiptDescription').value=''; };
+    $('newReceiptBtn').onclick = () => { 
+        editingReceiptId=null; 
+        $('receiptNumber').value = getNextNumber(receiptsDB, 'REC'); // Auto number
+        $('receiptDate').value=toLocalISO(new Date()); 
+        $('amountReceived').value=''; $('receiptDescription').value=''; 
+    };
 
 
-    // --- Global Actions (Edit/Print) ---
+    // --- EDIT Functions ---
     window.editInvoice = (id) => {
         const inv = invoicesDB.find(i=>i.invoiceNumber===id);
         if(!inv) return;
         editingInvoiceId = id;
         $('invoiceNumber').value=inv.invoiceNumber; $('invoiceDate').value=inv.invoiceDate; $('customerName').value=inv.customerName;
+        // Trigger input event to show debt details
+        $('customerName').dispatchEvent(new Event('input'));
         $('itemsBody').innerHTML='';
         inv.items.forEach(i=>addItem(i.description, i.quantity, i.price));
         calcInvoice();
@@ -288,35 +392,50 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     window.editCustomer = (id) => {
         const c = customersDB.find(x=>x.id===id);
-        $('custCode').value=c.id; $('custName').value=c.name; $('custTaxNumber').value=c.taxNumber; $('custPhone').value=c.phone; $('custAddress').value=c.address||'';
+        $('custCode').value=c.id; $('custName').value=c.name; $('custTaxNumber').value=c.taxNumber; $('custPhone').value=c.phone;
+        const addr = c.address || {};
+        $('custCity').value=addr.city||''; $('custDistrict').value=addr.district||''; $('custStreet').value=addr.street||'';
+        $('custBuild').value=addr.build||''; $('custZip').value=addr.zip||''; $('custAddNo').value=addr.addNo||'';
         $('.tab-btn[data-tab="customersTab"]').click();
     };
     window.editSupplier = (id) => {
         const s = suppliersDB.find(x=>x.id===id);
         $('supCode').value=s.id; $('supName').value=s.name; $('supTaxNumber').value=s.taxNumber; $('supPhone').value=s.phone;
+        const addr = s.address || {};
+        $('supCity').value=addr.city||''; $('supDistrict').value=addr.district||''; $('supStreet').value=addr.street||'';
+        $('supBuild').value=addr.build||''; $('supZip').value=addr.zip||''; $('supAddNo').value=addr.addNo||'';
         $('.tab-btn[data-tab="suppliersTab"]').click();
     };
     window.editItem = (idx) => { editingItemId=idx; $('itemName').value=itemsDB[idx].name; $('itemPrice').value=itemsDB[idx].price; $('.tab-btn[data-tab="itemsTab"]').click(); };
     window.deleteItem = (idx) => { if(confirm('حذف؟')) { itemsDB.splice(idx,1); saveAllData(); renderAllLogs(); } };
 
-    // --- Printing ---
+    // --- PRINT Functions ---
     function setPrintLogo(imgId) {
         const img = $(imgId);
         if(sellerInfo.logo) { img.src = sellerInfo.logo; img.style.display = 'block'; } else { img.style.display = 'none'; }
     }
 
+    // Explicit window property assignment for HTML inline onclick
     window.printInvoice = (id) => {
         const inv = invoicesDB.find(i=>i.invoiceNumber===id);
         if(!inv) return;
         setPrintLogo('printLogo');
         $('previewSellerName').innerText = sellerInfo.name;
-        $('previewSellerInfo').innerText = `${sellerInfo.address} | ${sellerInfo.taxNumber}`;
+        const sAddr = sellerInfo.address || {};
+        $('previewSellerInfo').innerText = `هاتف: ${sellerInfo.phone} | ضريبي: ${sellerInfo.taxNumber}`;
+        $('previewSellerAddress').innerText = `${sAddr.build||''} ${sAddr.street||''} - ${sAddr.district||''} - ${sAddr.city||''}`;
+        
         $('previewInvoiceNo').innerText = inv.invoiceNumber;
         $('previewDate').innerText = formatDate(inv.invoiceDate);
         
-        let clientHtml = `<div class="detail-row"><div class="detail-label">العميل:</div><div>${inv.customerName}</div></div>`;
         const cust = customersDB.find(c=>c.id===inv.customerCode);
-        if(cust) clientHtml += `<div class="detail-row"><div class="detail-label">الرقم الضريبي:</div><div>${cust.taxNumber}</div></div><div class="detail-row"><div class="detail-label">العنوان:</div><div>${cust.address||'-'}</div></div>`;
+        let clientHtml = `<div class="detail-row"><div class="detail-label">العميل:</div><div>${inv.customerName}</div></div>`;
+        if(cust) {
+            const cAddr = cust.address || {};
+            const addrStr = `${cAddr.build||''} ${cAddr.street||''} - ${cAddr.district||''} - ${cAddr.city||''}`;
+            clientHtml += `<div class="detail-row"><div class="detail-label">الرقم الضريبي:</div><div>${cust.taxNumber}</div></div>`+
+                          `<div class="detail-row"><div class="detail-label">العنوان:</div><div>${addrStr}</div></div>`;
+        }
         $('previewClient').innerHTML = clientHtml;
 
         let rows = `<table class="items-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>`;
@@ -324,11 +443,29 @@ document.addEventListener('DOMContentLoaded', function() {
         $('previewItems').innerHTML = rows + `</tbody></table>`;
         $('previewTotals').innerHTML = `<h3>الإجمالي الكلي: ${inv.grandTotal} SAR</h3>`;
         
-        // ZATCA QR (Simplified)
+        // QR Code
         const tlv = `Seller:${sellerInfo.name}|Tax:${sellerInfo.taxNumber}|Date:${inv.invoiceDate}|Total:${inv.grandTotal}|VAT:${inv.vatTotal}`;
         $('qrContainer').innerHTML=''; new QRCode($('qrContainer'), {text: tlv, width:120, height:120});
 
         document.body.className = 'printing-invoice';
+        window.print();
+    };
+
+    window.printPurchase = (id) => {
+        const pur = purchasesDB.find(p=>p.invoiceNumber===id);
+        if(!pur) return;
+        setPrintLogo('printLogo'); // Reuse logic or add separate logo img in HTML
+        $('purPreviewSellerName').innerText = sellerInfo.name;
+        $('purPreviewNo').innerText = pur.invoiceNumber;
+        $('purPreviewDate').innerText = formatDate(pur.invoiceDate);
+        $('purPreviewSupplier').innerHTML = `<div class="detail-row"><div class="detail-label">المورد:</div><div>${pur.supplierName}</div></div>`;
+        
+        let rows = `<table class="items-table"><thead><tr><th>الصنف</th><th>الكمية</th></tr></thead><tbody>`;
+        pur.items.forEach(i => rows += `<tr><td>${i.description}</td><td>${i.quantity}</td></tr>`);
+        $('purPreviewItems').innerHTML = rows + `</tbody></table>`;
+        $('purPreviewTotals').innerHTML = `<h3>الإجمالي: ${pur.grandTotal} SAR</h3>`;
+        
+        document.body.className = 'printing-purchase';
         window.print();
     };
 
@@ -376,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.print();
     };
 
-    // --- REPORTS MODULE ---
+    // --- REPORTS ---
     $('generateReportBtn').onclick = () => {
         const type = $('reportType').value;
         const start = new Date($('reportStartDate').value || '2000-01-01');
@@ -413,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
             title = "حركة المخزون";
             cols = ['اسم الصنف', 'الكمية المشتراة', 'الكمية المباعة', 'المخزون النظري'];
             data = itemsDB.map(item => {
-                const bought = getItemPurchasedQty(item.name);
+                const bought = purchasesDB.reduce((acc, pur) => acc + pur.items.filter(i => i.description === item.name).reduce((s, it) => s + parseFloat(it.quantity), 0), 0);
                 const sold = getItemSoldQty(item.name);
                 return [item.name, bought, sold, (bought - sold)];
             });
@@ -465,7 +602,10 @@ document.addEventListener('DOMContentLoaded', function() {
         sellerInfo.name = $('settingSellerName').value;
         sellerInfo.taxNumber = $('settingSellerTaxNum').value;
         sellerInfo.phone = $('settingSellerPhone').value;
-        sellerInfo.address = $('settingSellerAddress').value;
+        sellerInfo.address = {
+            city: $('setCity').value, district: $('setDistrict').value, street: $('setStreet').value,
+            build: $('setBuild').value, zip: $('setZip').value, addNo: $('setAddNo').value
+        };
         saveAllData(); alert('تم الحفظ');
     };
     
@@ -483,9 +623,13 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAllData();
     $('settingSellerName').value = sellerInfo.name;
     $('settingSellerTaxNum').value = sellerInfo.taxNumber;
-    $('settingSellerAddress').value = sellerInfo.address;
     $('settingSellerPhone').value = sellerInfo.phone;
     
+    // Load Settings Address
+    const sAddr = sellerInfo.address || {};
+    $('setCity').value=sAddr.city||''; $('setDistrict').value=sAddr.district||''; $('setStreet').value=sAddr.street||'';
+    $('setBuild').value=sAddr.build||''; $('setZip').value=sAddr.zip||''; $('setAddNo').value=sAddr.addNo||'';
+
     // Tab Switching
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
@@ -497,6 +641,7 @@ document.addEventListener('DOMContentLoaded', function() {
         p.querySelectorAll('.sub-tab-content').forEach(x=>x.classList.remove('active')); $(b.dataset.tab).classList.add('active');
     }));
 
+    // Start
     $('newInvoiceBtn').click();
     $('newPurchaseBtn').click();
     $('newReceiptBtn').click();
