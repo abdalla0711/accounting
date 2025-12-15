@@ -1,0 +1,164 @@
+:root{
+    --accent:#0a6efd; --muted:#666; --card:#ffffff; --bg:#f4f6fb; --paper-margin:12mm;
+    --danger: #dc3545; --warning: #ffc107; --success: #198754; --secondary: #374151; --info: #0dcaf0;
+    --light-bg: #f0f2f5; /* لون خلفية جديد للتطبيقات */
+}
+*{box-sizing:border-box}
+body{font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif; margin:0; background:var(--bg); color:#111;}
+.wrap{max-width:1140px;margin:18px auto;padding:18px;}
+.card{background:var(--card);border-radius:10px;box-shadow:0 8px 30px rgba(10,20,40,0.06);padding:16px}
+.form-section{border-bottom:1px solid #e5e7eb;padding-bottom:12px;margin-bottom:12px}
+h1,h2,h3{margin:0 0 10px;color:var(--accent)}
+h1{font-size:20px;text-align:center;} h2{font-size:16px;color:#333} h3{font-size:15px;color:var(--muted); margin-top:16px;}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1 1 220px;min-width:180px} /* السطر المسبب للمشكلة على الحاسوب */
+label{display:block;font-weight:600;margin-bottom:6px;font-size:14px;}
+input, select, textarea {width:100%;padding:8px;border:1px solid #d8dbe0;border-radius:6px;font-size:14px; background: #fff;}
+.small{font-size:13px;color:var(--muted)}
+.items-table, .log-table {width:100%;border-collapse:collapse;margin-top:12px; font-size: 14px; display: block; overflow-x: auto; white-space: nowrap;}
+.items-table th,.items-table td, .log-table th, .log-table td {border:1px solid #e5e7eb;padding:8px;text-align:center; vertical-align: middle;}
+.items-table th, .log-table th {background:#fbfdff;font-weight:700}
+.btn{display:inline-block;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff;font-weight:700; font-size: 14px; margin: 2px; transition: all 0.2s ease;}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.btn.info{background: var(--info); color: #000;} .btn.secondary{background:var(--secondary)} .btn.success{background:var(--success)} .btn.danger{background:var(--danger)} .btn.warning{background:var(--warning); color: #111;}
+.btn.small-action{padding: 4px 8px; font-size: 12px;}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom: 12px; justify-content: center; align-items: center;}
+.customer-col { position: relative; }
+.customer-balance-display { font-size: 12px; font-weight: bold; color: var(--accent); white-space: nowrap; position: absolute; bottom: -18px; left: 0;}
+body[dir="rtl"] .customer-balance-display { left: auto; right: 0;}
+
+.preview, .statement-preview {display:none; margin-top:18px;padding:20px;border-radius:8px;background:#fff;border:1px solid #eef2ff}
+.tabs-nav, .sub-tabs-nav { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 16px; flex-wrap: wrap;}
+.tab-btn, .sub-tab-btn { padding: 10px 20px; cursor: pointer; border: none; background: transparent; font-size: 16px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab-btn.active, .sub-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content, .sub-tab-content { display: none; }
+.tab-content.active, .sub-tab-content.active { display: block; animation: fadeIn 0.5s; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.header-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;}
+.header-buttons { display: flex; gap: 8px; align-items: center; }
+.welcome-user {font-weight: bold; margin: 0 10px; color: var(--muted); font-size: 14px;}
+.summary { text-align: left; padding: 10px; border-top: 1px solid #eee; margin-top: 10px;}
+body[dir="rtl"] .summary { text-align: right; }
+.summary p { margin: 5px 0; font-size: 15px;}
+
+/* Preview Styles */
+/* ... (Preview styles remain the same, they are correct) ... */
+.preview-client-details {margin-top:20px; background: #f9f9f9; padding: 12px; border-radius: 6px;}
+.preview-client-details .detail-row { display: flex; margin-bottom: 4px; font-size: 14px;}
+.preview-client-details .detail-label { font-weight: bold; min-width: 120px; }
+body[dir="ltr"] .preview-client-details .detail-label { min-width: 150px; }
+.qr-block{text-align:center}
+#qrContainer { width: 140px; height: 140px; margin: auto; padding: 4px; background: white; border: 1px solid #eee; }
+#qrContainer canvas, #qrContainer img { display: block; width: 100% !important; height: 100% !important; }
+.invoice-preview .inv-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.invoice-preview .seller-block { text-align: right; }
+body[dir="ltr"] .invoice-preview .seller-block { text-align: left; }
+.invoice-preview .seller-block h2 { font-size: 22px; color: #000; margin-bottom: 8px;}
+.invoice-preview .invoice-title { text-align: center; margin: 20px 0; font-size: 24px; color: #333; text-decoration: underline;}
+.preview-meta {margin-top:20px; border-top:1px solid #eee; padding-top:10px; display:flex; justify-content: space-between;}
+.meta-value {font-weight: 700;}
+.preview-items-container {margin-top:20px;}
+.preview-totals-container {margin-top:20px; padding-top:10px; border-top: 1px solid #eee;}
+.receipt-preview .receipt-header, .statement-preview .statement-header {text-align:center; margin-bottom: 20px;}
+.receipt-preview .receipt-title {text-align:center; font-size: 1.2em; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 15px;}
+.receipt-details-table {width:100%; border-collapse:collapse; font-size: 1em; text-align: right;}
+body[dir="ltr"] .receipt-details-table {text-align: left;}
+.receipt-details-table td {padding: 6px;}
+.receipt-label {font-weight: bold;}
+.receipt-signatures, .statement-summary {margin-top: 40px; display: flex; justify-content: space-between; font-size: 0.9em;}
+.statement-client-info {margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 6px;}
+
+
+/* === MOBILE-FIRST PROFESSIONAL REDESIGN (WITH THE CORRECT FIX) === */
+@media (max-width: 768px) {
+    body { background-color: var(--card); }
+    .wrap { padding: 0; margin: 0; }
+    .card {
+        box-shadow: none; padding: 12px; border-radius: 0;
+    }
+
+    /* --- Header Controls --- */
+    .header-controls {
+        flex-direction: column; align-items: center; gap: 12px; margin-bottom: 20px;
+    }
+    .header-controls h1 {
+        order: -1; font-size: 18px; color: var(--accent);
+    }
+    .welcome-user { display: none; }
+    .header-buttons {
+        display: flex; flex-direction: row; justify-content: center; gap: 10px; width: 100%;
+    }
+    .header-buttons .btn {
+        flex: 1; padding: 10px 5px;
+    }
+
+    /* --- Tabs Redesign --- */
+    .tabs-nav, .sub-tabs-nav {
+        display: flex; background-color: var(--light-bg); border-radius: 10px;
+        padding: 4px; border-bottom: none; overflow-x: auto;
+    }
+    .tab-btn, .sub-tab-btn {
+        flex: 1 0 auto; text-align: center; border-radius: 8px; border-bottom: none;
+        padding: 8px 10px; margin-bottom: 0; font-size: 13px; font-weight: 600;
+        color: var(--muted); transition: all 0.25s ease-in-out; white-space: nowrap;
+    }
+    .tab-btn.active, .sub-tab-btn.active {
+        background-color: var(--accent); color: #fff;
+        box-shadow: 0 3px 8px rgba(10, 110, 253, 0.3);
+        transform: translateY(-1px);
+    }
+
+    /* --- Action Buttons --- */
+    .actions {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        margin-top: 15px; margin-bottom: 25px;
+    }
+    .actions .btn {
+        width: 100%; margin: 0; padding: 12px 5px; font-size: 14px;
+    }
+    
+    /* --- Form Spacing FIX --- */
+    h2 {
+        text-align: center; font-size: 16px; color: #555;
+        padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; margin-bottom: 20px;
+    }
+    .form-section { border-bottom: none; padding: 0; margin: 0; }
+    
+    .row {
+        flex-direction: column;
+        gap: 16px; /* <<< هذا هو المتحكم الوحيد الآن في المسافة >>> */
+    }
+    .row + .row {
+        margin-top: 16px; /* مسافة بين مجموعات الحقول */
+    }
+
+    /*
+     *  ============= THE REAL, FINAL FIX IS HERE =============
+     *  This one line overrides the 220px height from the desktop style.
+     *  It tells the element to be only as tall as its content.
+    */
+    .col {
+        flex-basis: auto !important; /* <<< هذا هو السطر الذي يحل كل شيء >>> */
+    }
+    /*  ====================================================== */
+
+    label { margin-bottom: 5px; font-size: 13px; }
+    
+    .log-table .actions { flex-direction: row; gap: 5px; justify-content: center; }
+    .log-table .btn.small-action { width: auto; flex: 1; }
+}
+/* === END OF REDESIGN === */
+
+
+/* Print Styles */
+@media print{
+    body{background:white; color:black;}
+    .wrap, .card {box-shadow:none;max-width:100%;margin:0;padding:0;border-radius:0;}
+    .no-print {display:none !important}
+    .preview, .statement-preview { display: none !important; border:none;margin:0;padding:0;border-radius:0;}
+    body.printing-invoice .invoice-preview { display: block !important; }
+    body.printing-receipt .receipt-preview { display: block !important; }
+    body.printing-statement .statement-preview { display: block !important; }
+    .items-table { display: table; overflow-x: hidden; white-space: normal; }
+    @page { size: A4; margin: var(--paper-margin); }
+}
