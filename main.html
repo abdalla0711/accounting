@@ -17,32 +17,33 @@
         <h1 data-translate="pageTitle">الخبير المحاسبي</h1>
         <div class="header-buttons">
           <span id="welcomeUser" class="welcome-user"></span>
-          <button class="btn secondary" id="langToggleBtn">English</button>
-          <button class="btn danger" id="logoutBtn" data-translate="logoutBtn">خروج</button>
+          <!-- إصلاح: استخدام onclick مباشرة للأزرار -->
+          <button class="btn secondary" onclick="toggleLanguage()" id="langToggleBtn">English</button>
+          <button class="btn danger" onclick="logoutUser()" data-translate="logoutBtn">خروج</button>
         </div>
       </div>
 
       <div class="tabs-nav">
-        <button class="tab-btn active" data-tab="invoiceTab">مبيعات</button>
-        <button class="tab-btn" data-tab="purchasesTab">مشتريات</button>
-        <button class="tab-btn" data-tab="receiptTab">سندات</button>
-        <button class="tab-btn" data-tab="itemsTab">أصناف</button>
-        <button class="tab-btn" data-tab="customersTab">عملاء</button>
-        <button class="tab-btn" data-tab="suppliersTab">موردين</button>
-        <button class="tab-btn" data-tab="reportsTab">تقارير</button>
-        <button class="tab-btn" data-tab="settingsTab">إعدادات</button>
+        <button class="tab-btn active" onclick="switchTab('invoiceTab')" data-tab="invoiceTab" data-translate="invoiceTab">مبيعات</button>
+        <button class="tab-btn" onclick="switchTab('purchasesTab')" data-tab="purchasesTab" data-translate="purchasesTab">مشتريات</button>
+        <button class="tab-btn" onclick="switchTab('receiptTab')" data-tab="receiptTab" data-translate="receiptTab">سندات</button>
+        <button class="tab-btn" onclick="switchTab('itemsTab')" data-tab="itemsTab" data-translate="itemsTab">أصناف</button>
+        <button class="tab-btn" onclick="switchTab('customersTab')" data-tab="customersTab" data-translate="customersTab">عملاء</button>
+        <button class="tab-btn" onclick="switchTab('suppliersTab')" data-tab="suppliersTab" data-translate="suppliersTab">موردين</button>
+        <button class="tab-btn" onclick="switchTab('reportsTab')" data-tab="reportsTab" data-translate="reportsTab">تقارير</button>
+        <button class="tab-btn" onclick="switchTab('settingsTab')" data-tab="settingsTab" data-translate="settingsTab">إعدادات</button>
       </div>
 
       <!-- SALES TAB -->
       <div id="invoiceTab" class="tab-content active">
         <div class="sub-tabs-nav">
-          <button class="sub-tab-btn active" data-tab="createInvoice" data-parent="invoiceTab">إنشاء فاتورة</button>
-          <button class="sub-tab-btn" data-tab="invoiceLog" data-parent="invoiceTab">سجل الفواتير</button>
+          <button class="sub-tab-btn active" onclick="switchSubTab('invoiceTab', 'createInvoice')" data-tab="createInvoice">إنشاء فاتورة</button>
+          <button class="sub-tab-btn" onclick="switchSubTab('invoiceTab', 'invoiceLog')" data-tab="invoiceLog">سجل الفواتير</button>
         </div>
         <div id="createInvoice" class="sub-tab-content active">
           <div class="actions">
-            <button class="btn" id="newInvoiceBtn">➕ جديد</button>
-            <button class="btn success" id="generateBtn">💾 حفظ</button>
+            <button class="btn" onclick="resetInvoiceForm()">➕ جديد</button>
+            <button class="btn success" onclick="saveInvoice()">💾 حفظ</button>
           </div>
           <div class="form-section">
             <div class="row">
@@ -56,8 +57,7 @@
             <div class="row">
               <div class="col customer-col">
                 <label>العميل</label>
-                <input id="customerName" type="text" list="customersDatalist" autocomplete="off">
-                <!-- مربع تفاصيل المديونية -->
+                <input id="customerName" type="text" list="customersDatalist" autocomplete="off" oninput="showCustomerDebt(this.value)">
                 <div id="customerDebtDetails" class="debt-details-box"></div>
               </div>
               <div class="col"><label>الرقم الضريبي</label><input id="customerTaxNumber" type="text" readonly></div>
@@ -68,8 +68,8 @@
                 <thead><tr><th style="width:40%">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>X</th></tr></thead>
                 <tbody id="itemsBody"></tbody>
             </table>
-            <!-- زر إضافة صنف -->
-            <button class="btn small-action" id="addItemBtn" type="button">➕ صنف</button>
+            <!-- هام: type="button" لمنع التحديث -->
+            <button class="btn small-action" onclick="addItem()" type="button">➕ صنف</button>
             <div class="summary">
               <p>الإجمالي: <strong id="subTotal">0.00</strong> | الضريبة: <strong id="vatTotal">0.00</strong> | <strong>الكلي: <span id="grandTotal">0.00</span></strong></p>
             </div>
@@ -81,13 +81,13 @@
       <!-- PURCHASES TAB -->
       <div id="purchasesTab" class="tab-content">
         <div class="sub-tabs-nav">
-            <button class="sub-tab-btn active" data-tab="createPurchase" data-parent="purchasesTab">تسجيل فاتورة شراء</button>
-            <button class="sub-tab-btn" data-tab="purchaseLog" data-parent="purchasesTab">سجل المشتريات</button>
+            <button class="sub-tab-btn active" onclick="switchSubTab('purchasesTab', 'createPurchase')" data-tab="createPurchase">تسجيل فاتورة شراء</button>
+            <button class="sub-tab-btn" onclick="switchSubTab('purchasesTab', 'purchaseLog')" data-tab="purchaseLog">سجل المشتريات</button>
         </div>
         <div id="createPurchase" class="sub-tab-content active">
             <div class="actions">
-                <button class="btn" id="newPurchaseBtn">➕ جديد</button>
-                <button class="btn success" id="savePurchaseBtn">💾 حفظ الشراء</button>
+                <button class="btn" onclick="resetPurchaseForm()">➕ جديد</button>
+                <button class="btn success" onclick="savePurchase()">💾 حفظ الشراء</button>
             </div>
             <div class="form-section">
                 <div class="row">
@@ -106,7 +106,7 @@
                     <thead><tr><th style="width:40%">الصنف</th><th>الكمية</th><th>تكلفة الوحدة</th><th>الإجمالي</th><th>X</th></tr></thead>
                     <tbody id="purchaseItemsBody"></tbody>
                 </table>
-                <button class="btn small-action" id="addPurchaseItemBtn">➕ صنف</button>
+                <button class="btn small-action" onclick="addPurchaseItem()" type="button">➕ صنف</button>
                 <div class="summary">
                     <p>الإجمالي: <strong id="purchaseSubTotal">0.00</strong> | الضريبة: <strong id="purchaseVatTotal">0.00</strong> | <strong>الكلي: <span id="purchaseGrandTotal">0.00</span></strong></p>
                 </div>
@@ -120,20 +120,20 @@
       <!-- RECEIPTS TAB -->
       <div id="receiptTab" class="tab-content">
         <div class="sub-tabs-nav">
-          <button class="sub-tab-btn active" data-tab="createReceipt" data-parent="receiptTab">إنشاء سند</button>
-          <button class="sub-tab-btn" data-tab="receiptLog" data-parent="receiptTab">سجل السندات</button>
+          <button class="sub-tab-btn active" onclick="switchSubTab('receiptTab', 'createReceipt')" data-tab="createReceipt">إنشاء سند</button>
+          <button class="sub-tab-btn" onclick="switchSubTab('receiptTab', 'receiptLog')" data-tab="receiptLog">سجل السندات</button>
         </div>
         <div id="createReceipt" class="sub-tab-content active">
            <div class="actions">
-            <button class="btn" id="newReceiptBtn">➕ جديد</button>
-            <button class="btn success" id="saveReceiptBtn">💾 حفظ السند</button>
+            <button class="btn" onclick="resetReceiptForm()">➕ جديد</button>
+            <button class="btn success" onclick="saveReceipt()">💾 حفظ السند</button>
           </div>
           <div class="form-section">
             <div class="row"><div class="col"><label>رقم السند</label><input id="receiptNumber" type="text"></div><div class="col"><label>التاريخ</label><input id="receiptDate" type="datetime-local"></div></div>
              <div class="row">
                 <div class="col customer-col">
                   <label>العميل</label>
-                  <input id="receiptCustomerName" type="text" list="customersDatalist" autocomplete="off">
+                  <input id="receiptCustomerName" type="text" list="customersDatalist" autocomplete="off" oninput="showReceiptBalance(this.value)">
                   <div id="receiptCustomerBalanceDisplay" class="customer-balance-display"></div>
                 </div>
                 <div class="col"><label>المبلغ</label><input id="amountReceived" type="number" placeholder="0.00"></div>
@@ -142,15 +142,15 @@
              <div class="row"><div class="col"><label>الوصف</label><input id="receiptDescription"></div></div>
           </div>
         </div>
-        <div id="receiptLog" class="sub-tab-content"><table class="log-table"><thead><tr><th>رقم</th><th>تاريخ</th><th>عميل</th><th>مبلغ</th><th>إجراء</th></tr></thead><tbody id="receiptLogBody"></tbody></table></div>
+        <div id="receiptLog" class="sub-tab-content"><table class="log-table" id="receiptLogTable"><thead><tr><th>رقم</th><th>تاريخ</th><th>عميل</th><th>مبلغ</th><th>إجراء</th></tr></thead><tbody id="receiptLogBody"></tbody></table></div>
       </div>
 
       <!-- ITEMS TAB -->
       <div id="itemsTab" class="tab-content">
-        <div class="sub-tabs-nav"><button class="sub-tab-btn active" data-tab="createItem" data-parent="itemsTab">إدارة الأصناف</button></div>
+        <div class="sub-tabs-nav"><button class="sub-tab-btn active" onclick="switchSubTab('itemsTab', 'createItem')" data-tab="createItem">إدارة الأصناف</button></div>
         <div id="createItem" class="sub-tab-content active">
             <div class="row"><div class="col"><label>اسم الصنف</label><input id="itemName" type="text"></div><div class="col"><label>سعر البيع</label><input id="itemPrice" type="number"></div></div>
-            <div class="actions" style="margin-top:10px"><button class="btn success" id="saveItemBtn">💾 حفظ</button><button class="btn secondary" id="clearItemFormBtn">➕ جديد</button></div>
+            <div class="actions" style="margin-top:10px"><button class="btn success" onclick="saveItem()">💾 حفظ</button><button class="btn secondary" onclick="resetItemForm()">➕ جديد</button></div>
             <h3 style="margin-top:20px">سجل الأصناف</h3>
             <table class="log-table"><thead><tr><th>الاسم</th><th>السعر</th><th>مباع</th><th>إجراء</th></tr></thead><tbody id="itemsLogBody"></tbody></table>
         </div>
@@ -158,7 +158,7 @@
       
       <!-- CUSTOMERS TAB -->
       <div id="customersTab" class="tab-content">
-        <div class="sub-tabs-nav"><button class="sub-tab-btn active" data-tab="createCustomer" data-parent="customersTab">إدارة العملاء</button></div>
+        <div class="sub-tabs-nav"><button class="sub-tab-btn active" onclick="switchSubTab('customersTab', 'createCustomer')" data-tab="createCustomer">إدارة العملاء</button></div>
         <div id="createCustomer" class="sub-tab-content active">
             <div class="row"><div class="col"><label>الكود</label><input id="custCode"></div><div class="col"><label>الاسم</label><input id="custName"></div><div class="col"><label>الضريبي</label><input id="custTaxNumber"></div><div class="col"><label>الهاتف</label><input id="custPhone"></div></div>
             <label style="margin-top:10px; color:var(--accent);">العنوان الوطني (كامل التفاصيل)</label>
@@ -170,7 +170,7 @@
                 <input id="custZip" placeholder="الرمز البريدي">
                 <input id="custAddNo" placeholder="الرقم الإضافي">
             </div>
-            <div class="actions" style="margin-top:10px"><button class="btn success" id="saveCustomerBtn">💾 حفظ</button><button class="btn secondary" id="clearCustomerFormBtn">➕ جديد</button></div>
+            <div class="actions" style="margin-top:10px"><button class="btn success" onclick="saveCustomer()">💾 حفظ</button><button class="btn secondary" onclick="resetCustomerForm()">➕ جديد</button></div>
             <h3 style="margin-top:20px">سجل العملاء</h3>
             <table class="log-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الرصيد</th><th>إجراء</th></tr></thead><tbody id="customersLogBody"></tbody></table>
         </div>
@@ -178,7 +178,7 @@
 
       <!-- SUPPLIERS TAB -->
       <div id="suppliersTab" class="tab-content">
-        <div class="sub-tabs-nav"><button class="sub-tab-btn active" data-tab="createSupplier" data-parent="suppliersTab">إدارة الموردين</button></div>
+        <div class="sub-tabs-nav"><button class="sub-tab-btn active" onclick="switchSubTab('suppliersTab', 'createSupplier')" data-tab="createSupplier">إدارة الموردين</button></div>
         <div id="createSupplier" class="sub-tab-content active">
             <div class="row"><div class="col"><label>الكود</label><input id="supCode"></div><div class="col"><label>اسم المورد</label><input id="supName"></div><div class="col"><label>الضريبي</label><input id="supTaxNumber"></div><div class="col"><label>الهاتف</label><input id="supPhone"></div></div>
             <label style="margin-top:10px; color:var(--accent);">العنوان الوطني (كامل التفاصيل)</label>
@@ -190,7 +190,7 @@
                 <input id="supZip" placeholder="الرمز البريدي">
                 <input id="supAddNo" placeholder="الرقم الإضافي">
             </div>
-            <div class="actions" style="margin-top:10px"><button class="btn success" id="saveSupplierBtn">💾 حفظ</button><button class="btn secondary" id="clearSupplierFormBtn">➕ جديد</button></div>
+            <div class="actions" style="margin-top:10px"><button class="btn success" onclick="saveSupplier()">💾 حفظ</button><button class="btn secondary" onclick="resetSupplierForm()">➕ جديد</button></div>
             <h3 style="margin-top:20px">سجل الموردين</h3>
             <table class="log-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الرصيد</th><th>إجراء</th></tr></thead><tbody id="suppliersLogBody"></tbody></table>
         </div>
@@ -212,9 +212,9 @@
                   <div class="col"><label>من تاريخ</label><input type="date" id="reportStartDate"></div>
                   <div class="col"><label>إلى تاريخ</label><input type="date" id="reportEndDate"></div>
                   <div class="col" style="display:flex; align-items:flex-end; gap:5px">
-                      <button class="btn success" id="generateReportBtn">عرض التقرير</button>
-                      <button class="btn secondary" id="exportExcelBtn">Excel</button>
-                      <button class="btn warning" id="printReportBtn">طباعة التقرير</button>
+                      <button class="btn success" onclick="generateReport()">عرض التقرير</button>
+                      <button class="btn secondary" onclick="exportExcel()">Excel</button>
+                      <button class="btn warning" onclick="printReport()">طباعة التقرير</button>
                   </div>
               </div>
           </div>
@@ -234,7 +234,7 @@
         <div class="form-section">
             <h2 data-translate="companySection">بيانات الشركة</h2>
             <div class="row">
-                <div class="col"><label>شعار الشركة</label><input type="file" id="logoUpload" accept="image/*"><img id="logoPreview" class="logo-upload-preview" src=""></div>
+                <div class="col"><label>شعار الشركة</label><input type="file" id="logoUpload" accept="image/*" onchange="previewLogo(event)"><img id="logoPreview" class="logo-upload-preview" src=""></div>
                 <div class="col"><label data-translate="sellerName">اسم الشركة</label><input id="settingSellerName" type="text"></div>
                 <div class="col"><label data-translate="sellerTaxNumber">الرقم الضريبي</label><input id="settingSellerTaxNum" type="text"></div>
                 <div class="col"><label data-translate="phone">الهاتف</label><input id="settingSellerPhone" type="text"></div>
@@ -248,11 +248,11 @@
                 <input id="setZip" placeholder="الرمز البريدي">
                 <input id="setAddNo" placeholder="الرقم الإضافي">
             </div>
-            <div class="actions" style="margin-top: 16px;"><button class="btn success" id="saveSettingsBtn">💾 حفظ الإعدادات</button></div>
+            <div class="actions" style="margin-top: 16px;"><button class="btn success" onclick="saveSettings()">💾 حفظ الإعدادات</button></div>
         </div>
         <div class="form-section">
             <h2>نسخة احتياطية</h2>
-            <div class="actions"><button class="btn" id="exportAllBtn">💾 تصدير</button><div><label for="importAllFile" class="btn secondary">📂 استعادة</label><input type="file" id="importAllFile" accept=".xlsx" style="display:none;"></div><button class="btn danger" id="clearAllDataBtn">🗑️ مسح الكل</button></div>
+            <div class="actions"><button class="btn" onclick="exportBackup()">💾 تصدير</button><div><label for="importAllFile" class="btn secondary">📂 استعادة</label><input type="file" id="importAllFile" accept=".xlsx" style="display:none;" onchange="importBackup(event)"></div><button class="btn danger" onclick="clearAllData()">🗑️ مسح الكل</button></div>
         </div>
       </div>
       
