@@ -3,35 +3,44 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title data-translate="pageTitle">الخبير المحاسبي</title>
+<title>الخبير المحاسبي</title>
 <link rel="stylesheet" href="main.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='90' height='90' x='5' y='5' fill='%230a6efd' rx='15'/><text y='68' x='50' font-size='60' fill='white' text-anchor='middle' font-weight='bold'>+</text><circle cx='75' cy='25' r='20' fill='%23198754'/><text y='34' x='75' font-size='30' fill='white' text-anchor='middle' font-weight='bold'>✓</text></svg>">
 </head>
 <body>
+
+<!-- شاشة حماية في حال عدم تسجيل الدخول -->
+<div id="loginBlocker" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; text-align:center; padding-top:100px;">
+    <h1 style="color:red">غير مسموح بالوصول</h1>
+    <p>يجب تسجيل الدخول أولاً.</p>
+    <a href="index.html" class="btn">الذهاب لصفحة الدخول</a>
+    <br><br>
+    <button class="btn danger" onclick="localStorage.clear(); sessionStorage.clear(); alert('تم المسح'); window.location.href='index.html';">مسح بيانات المتصفح (طوارئ)</button>
+</div>
+
 <div class="wrap">
   <div class="card">
     <div class="no-print">
       <div class="header-controls">
-        <h1 data-translate="pageTitle">الخبير المحاسبي</h1>
+        <h1>الخبير المحاسبي</h1>
         <div class="header-buttons">
           <span id="welcomeUser" class="welcome-user"></span>
-          <!-- إصلاح: استخدام onclick مباشرة للأزرار -->
           <button class="btn secondary" onclick="toggleLanguage()" id="langToggleBtn">English</button>
-          <button class="btn danger" onclick="logoutUser()" data-translate="logoutBtn">خروج</button>
+          <button class="btn danger" onclick="logoutUser()">خروج</button>
         </div>
       </div>
 
       <div class="tabs-nav">
-        <button class="tab-btn active" onclick="switchTab('invoiceTab')" data-tab="invoiceTab" data-translate="invoiceTab">مبيعات</button>
-        <button class="tab-btn" onclick="switchTab('purchasesTab')" data-tab="purchasesTab" data-translate="purchasesTab">مشتريات</button>
-        <button class="tab-btn" onclick="switchTab('receiptTab')" data-tab="receiptTab" data-translate="receiptTab">سندات</button>
-        <button class="tab-btn" onclick="switchTab('itemsTab')" data-tab="itemsTab" data-translate="itemsTab">أصناف</button>
-        <button class="tab-btn" onclick="switchTab('customersTab')" data-tab="customersTab" data-translate="customersTab">عملاء</button>
-        <button class="tab-btn" onclick="switchTab('suppliersTab')" data-tab="suppliersTab" data-translate="suppliersTab">موردين</button>
-        <button class="tab-btn" onclick="switchTab('reportsTab')" data-tab="reportsTab" data-translate="reportsTab">تقارير</button>
-        <button class="tab-btn" onclick="switchTab('settingsTab')" data-tab="settingsTab" data-translate="settingsTab">إعدادات</button>
+        <button class="tab-btn active" onclick="switchTab('invoiceTab')" data-tab="invoiceTab">مبيعات</button>
+        <button class="tab-btn" onclick="switchTab('purchasesTab')" data-tab="purchasesTab">مشتريات</button>
+        <button class="tab-btn" onclick="switchTab('receiptTab')" data-tab="receiptTab">سندات</button>
+        <button class="tab-btn" onclick="switchTab('itemsTab')" data-tab="itemsTab">أصناف</button>
+        <button class="tab-btn" onclick="switchTab('customersTab')" data-tab="customersTab">عملاء</button>
+        <button class="tab-btn" onclick="switchTab('suppliersTab')" data-tab="suppliersTab">موردين</button>
+        <button class="tab-btn" onclick="switchTab('reportsTab')" data-tab="reportsTab">تقارير</button>
+        <button class="tab-btn" onclick="switchTab('settingsTab')" data-tab="settingsTab">إعدادات</button>
       </div>
 
       <!-- SALES TAB -->
@@ -68,7 +77,6 @@
                 <thead><tr><th style="width:40%">الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>X</th></tr></thead>
                 <tbody id="itemsBody"></tbody>
             </table>
-            <!-- هام: type="button" لمنع التحديث -->
             <button class="btn small-action" onclick="addItem()" type="button">➕ صنف</button>
             <div class="summary">
               <p>الإجمالي: <strong id="subTotal">0.00</strong> | الضريبة: <strong id="vatTotal">0.00</strong> | <strong>الكلي: <span id="grandTotal">0.00</span></strong></p>
@@ -230,14 +238,14 @@
       
       <!-- SETTINGS TAB -->
       <div id="settingsTab" class="tab-content">
-        <h1 data-translate="settingsTab">الإعدادات والبيانات</h1>
+        <h1>الإعدادات والبيانات</h1>
         <div class="form-section">
-            <h2 data-translate="companySection">بيانات الشركة</h2>
+            <h2>بيانات الشركة</h2>
             <div class="row">
                 <div class="col"><label>شعار الشركة</label><input type="file" id="logoUpload" accept="image/*" onchange="previewLogo(event)"><img id="logoPreview" class="logo-upload-preview" src=""></div>
-                <div class="col"><label data-translate="sellerName">اسم الشركة</label><input id="settingSellerName" type="text"></div>
-                <div class="col"><label data-translate="sellerTaxNumber">الرقم الضريبي</label><input id="settingSellerTaxNum" type="text"></div>
-                <div class="col"><label data-translate="phone">الهاتف</label><input id="settingSellerPhone" type="text"></div>
+                <div class="col"><label>اسم الشركة</label><input id="settingSellerName" type="text"></div>
+                <div class="col"><label>الرقم الضريبي</label><input id="settingSellerTaxNum" type="text"></div>
+                <div class="col"><label>الهاتف</label><input id="settingSellerPhone" type="text"></div>
             </div>
             <label style="margin-top:10px; color:var(--accent);">العنوان الوطني (كامل التفاصيل)</label>
             <div class="address-grid">
