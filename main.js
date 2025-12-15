@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const customer = customersDB.find(c => c.id === invoiceData.customerCode);
         $('previewSellerName').innerText = sellerInfo.name;
         $('previewSellerInfo').innerHTML = `${sellerInfo.address}<br>${t.phone}: ${sellerInfo.phone}<br>${t.sellerTaxNumber}: ${sellerInfo.taxNumber}`;
-        $('invoiceTitle').innerText = t.simplifiedTaxInvoice;
+        $('invoiceTitle').innerText = t.TaxInvoice;
         let clientHtml = '';
         if (customer) {
             const addr = customer.address || {};
