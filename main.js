@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ============================================================
-    // 3. دوال إعادة التعيين (Reset Functions) - تم رفعها للأعلى لتجنب الخطأ
+    // 3. دوال إعادة التعيين (Reset Functions)
     // ============================================================
     function resetSalesForm(){
         editingInvoiceId=null;
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('invoiceDate').value=toLocal();
         $('customerName').value=''; $('customerTaxNumber').value=''; $('invoiceDiscount').value=0;
         $('itemsBody').innerHTML=''; 
-        window.addSalesItem(); // استدعاء دالة النافذة
+        window.addSalesItem(); 
         const statusBox = $('customerStatusBox'); if(statusBox) statusBox.style.display='none';
     }
 
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('purchaseDate').value=toLocal();
         $('supplierName').value=''; $('supplierTaxNumber').value=''; $('purchaseDiscount').value=0;
         $('purchaseItemsBody').innerHTML=''; 
-        window.addPurItem(); // استدعاء دالة النافذة
+        window.addPurItem(); 
         const statusBox = $('supplierStatusBox'); if(statusBox) statusBox.style.display='none';
     }
 
@@ -543,6 +543,21 @@ document.addEventListener('DOMContentLoaded', function() {
     $('printReportBtn').addEventListener('click', ()=>{if(!currentReportData)return alert('لا يوجد تقرير');document.body.className='printing-report';window.print();});
     $('exportExcelBtn').addEventListener('click', ()=>{if(!currentReportData)return alert('لا يوجد بيانات');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(currentReportData),"Report");XLSX.writeFile(wb,"Report.xlsx");});
     
+    // SAVE CUSTOMER / SUPPLIER / ITEM (Added these missing listeners)
+    $('saveCustomerBtn').addEventListener('click', () => {
+        const id = $('custCode').value || getNextId(customersDB, 'id', 'CUST');
+        const obj = { id, name: $('custName').value, taxNumber: $('custTaxNumber').value, phone: $('custPhone').value, city: $('custCity').value, discount: num($('custDiscount').value) };
+        customersDB = customersDB.filter(x => x.id !== id); customersDB.push(obj); saveData(); renderAll(); $('custCode').value = ''; $('custName').value = ''; $('custDiscount').value = '';
+    });
+    $('saveSupplierBtn').addEventListener('click', () => {
+        const id = $('supId').value || getNextId(suppliersDB, 'id', 'SUP');
+        const obj = { id, name: $('supName').value, taxNumber: $('supTax').value, phone: $('supPhone').value, discount: num($('supDiscount').value) };
+        suppliersDB = suppliersDB.filter(x => x.id !== id); suppliersDB.push(obj); saveData(); renderAll(); $('supId').value = ''; $('supName').value = ''; $('supDiscount').value = '';
+    });
+    $('saveItemBtn').addEventListener('click', () => {
+        itemsDB.push({ name: $('itemName').value, price: num($('itemPrice').value) }); saveData(); renderAll(); $('itemName').value = '';
+    });
+
     $('saveSettingsBtn').addEventListener('click', () => {
         sellerInfo.name = $('settingSellerName').value; sellerInfo.taxNumber = $('settingSellerTaxNum').value; sellerInfo.address = $('settingSellerAddress').value; sellerInfo.phone = $('settingSellerPhone').value; saveData(); alert('تم حفظ الإعدادات');
     });
